@@ -1,0 +1,299 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.zhiwei.security"
+4    android:versionCode="1"
+5    android:versionName="1.0.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:5:5-67
+11-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:5:22-64
+12    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+12-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:6:5-79
+12-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:6:22-76
+13    <uses-permission android:name="android.permission.VIBRATE" />
+13-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:7:5-66
+13-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:7:22-63
+14    <uses-permission android:name="android.permission.WAKE_LOCK" />
+14-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:8:5-68
+14-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:8:22-65
+15    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+15-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:9:5-81
+15-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:9:22-78
+16    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+16-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:10:5-77
+16-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:10:22-74
+17    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+17-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:11:5-78
+17-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:11:22-75
+18    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+18-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:12:5-77
+18-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:12:22-74
+19    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+19-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:13:5-89
+19-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:13:22-86
+20    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+20-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:14:5-84
+20-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:14:22-81
+21    <uses-permission android:name="android.permission.GET_TASKS" />
+21-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:15:5-68
+21-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:15:22-65
+22    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+22-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:16:5-78
+22-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:16:22-75
+23    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+23-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:17:5-77
+23-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:17:22-74
+24    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+24-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:18:5-82
+24-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:18:22-79
+25    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+25-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:19:5-79
+25-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:19:22-76
+26
+27    <!-- Shizuku -->
+28    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+28-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:22:5-78
+28-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:22:22-75
+29
+30    <permission
+30-->[androidx.core:core:1.16.0] /root/.gradle/caches/9.1.0/transforms/e7cfa04ed3f53dd8f403aa55a01bfa27/transformed/core-1.16.0/AndroidManifest.xml:22:5-24:47
+31        android:name="com.zhiwei.security.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+31-->[androidx.core:core:1.16.0] /root/.gradle/caches/9.1.0/transforms/e7cfa04ed3f53dd8f403aa55a01bfa27/transformed/core-1.16.0/AndroidManifest.xml:23:9-81
+32        android:protectionLevel="signature" />
+32-->[androidx.core:core:1.16.0] /root/.gradle/caches/9.1.0/transforms/e7cfa04ed3f53dd8f403aa55a01bfa27/transformed/core-1.16.0/AndroidManifest.xml:24:9-44
+33
+34    <uses-permission android:name="com.zhiwei.security.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+34-->[androidx.core:core:1.16.0] /root/.gradle/caches/9.1.0/transforms/e7cfa04ed3f53dd8f403aa55a01bfa27/transformed/core-1.16.0/AndroidManifest.xml:26:5-97
+34-->[androidx.core:core:1.16.0] /root/.gradle/caches/9.1.0/transforms/e7cfa04ed3f53dd8f403aa55a01bfa27/transformed/core-1.16.0/AndroidManifest.xml:26:22-94
+35
+36    <application
+36-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:24:5-93:19
+37        android:name="com.zhiwei.security.ZhiweiApp"
+37-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:25:9-34
+38        android:allowBackup="true"
+38-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:26:9-35
+39        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+39-->[androidx.core:core:1.16.0] /root/.gradle/caches/9.1.0/transforms/e7cfa04ed3f53dd8f403aa55a01bfa27/transformed/core-1.16.0/AndroidManifest.xml:28:18-86
+40        android:debuggable="true"
+41        android:extractNativeLibs="false"
+42        android:icon="@mipmap/ic_launcher"
+42-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:27:9-43
+43        android:label="@string/app_name"
+43-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:28:9-41
+44        android:roundIcon="@mipmap/ic_launcher_round"
+44-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:29:9-54
+45        android:supportsRtl="true"
+45-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:30:9-35
+46        android:theme="@style/Theme.MyApplication" >
+46-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:31:9-51
+47        <activity
+47-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:34:9-44:20
+48            android:name="com.zhiwei.security.MainActivity"
+48-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:35:13-41
+49            android:exported="true"
+49-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:36:13-36
+50            android:label="@string/app_name"
+50-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:37:13-45
+51            android:launchMode="singleTask"
+51-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:39:13-44
+52            android:theme="@style/Theme.MyApplication" >
+52-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:38:13-55
+53            <intent-filter>
+53-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:40:13-43:29
+54                <action android:name="android.intent.action.MAIN" />
+54-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:41:17-69
+54-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:41:25-66
+55
+56                <category android:name="android.intent.category.LAUNCHER" />
+56-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:42:17-77
+56-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:42:27-74
+57            </intent-filter>
+58        </activity>
+59
+60        <!-- 防锁机守护前台服务 -->
+61        <service
+61-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:47:9-55:19
+62            android:name="com.zhiwei.security.service.ProtectService"
+62-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:48:13-51
+63            android:enabled="true"
+63-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:49:13-35
+64            android:exported="false"
+64-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:50:13-37
+65            android:foregroundServiceType="specialUse" >
+65-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:51:13-55
+66            <property
+66-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:52:13-54:53
+67                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+67-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:53:17-76
+68                android:value="防锁机守护，监控可疑锁机行为并拦截" />
+68-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:54:17-50
+69        </service>
+70
+71        <!-- 守护进程服务（独立 :guard 进程互守） -->
+72        <service
+72-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:58:9-67:19
+73            android:name="com.zhiwei.security.service.GuardService"
+73-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:59:13-49
+74            android:enabled="true"
+74-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:60:13-35
+75            android:exported="false"
+75-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:61:13-37
+76            android:foregroundServiceType="specialUse"
+76-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:63:13-55
+77            android:process=":guard" >
+77-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:62:13-37
+78            <property
+78-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:52:13-54:53
+79                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+79-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:53:17-76
+80                android:value="守护进程，与主服务互相监视，防止被杀" />
+80-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:54:17-50
+81        </service>
+82
+83        <!-- 开机自启 -->
+84        <receiver
+84-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:70:9-77:20
+85            android:name="com.zhiwei.security.service.BootReceiver"
+85-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:71:13-49
+86            android:enabled="true"
+86-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:72:13-35
+87            android:exported="false" >
+87-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:73:13-37
+88            <intent-filter>
+88-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:74:13-76:29
+89                <action android:name="android.intent.action.BOOT_COMPLETED" />
+89-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:75:17-79
+89-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:75:25-76
+90            </intent-filter>
+91        </receiver>
+92
+93        <!-- 定时保活 -->
+94        <receiver
+94-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:80:9-83:40
+95            android:name="com.zhiwei.security.service.KeepAliveReceiver"
+95-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:81:13-54
+96            android:enabled="true"
+96-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:82:13-35
+97            android:exported="false" />
+97-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:83:13-37
+98
+99        <!-- 病毒警告 -->
+100        <activity
+100-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:86:9-91:75
+101            android:name="com.zhiwei.security.ui.ShieldWarnActivity"
+101-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:87:13-50
+102            android:exported="false"
+102-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:88:13-37
+103            android:showWhenLocked="true"
+103-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:89:13-42
+104            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+104-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:91:13-72
+105            android:turnScreenOn="true" />
+105-->/data/user/0/com.ai.assistance.operit/files/workspace/2307812a-978f-4c5b-af5d-bbcef034a42b/app/src/main/AndroidManifest.xml:90:13-40
+106        <activity
+106-->[androidx.compose.ui:ui-tooling-android:1.10.2] /root/.gradle/caches/9.1.0/transforms/9a637601b5319556600b6d572aac413e/transformed/ui-tooling/AndroidManifest.xml:23:9-25:39
+107            android:name="androidx.compose.ui.tooling.PreviewActivity"
+107-->[androidx.compose.ui:ui-tooling-android:1.10.2] /root/.gradle/caches/9.1.0/transforms/9a637601b5319556600b6d572aac413e/transformed/ui-tooling/AndroidManifest.xml:24:13-71
+108            android:exported="true" />
+108-->[androidx.compose.ui:ui-tooling-android:1.10.2] /root/.gradle/caches/9.1.0/transforms/9a637601b5319556600b6d572aac413e/transformed/ui-tooling/AndroidManifest.xml:25:13-36
+109        <activity
+109-->[androidx.compose.ui:ui-test-manifest:1.10.2] /root/.gradle/caches/9.1.0/transforms/40f28cbe32c37c698d0312445aeaa131/transformed/ui-test-manifest-1.10.2/AndroidManifest.xml:23:9-26:79
+110            android:name="androidx.activity.ComponentActivity"
+110-->[androidx.compose.ui:ui-test-manifest:1.10.2] /root/.gradle/caches/9.1.0/transforms/40f28cbe32c37c698d0312445aeaa131/transformed/ui-test-manifest-1.10.2/AndroidManifest.xml:24:13-63
+111            android:exported="true"
+111-->[androidx.compose.ui:ui-test-manifest:1.10.2] /root/.gradle/caches/9.1.0/transforms/40f28cbe32c37c698d0312445aeaa131/transformed/ui-test-manifest-1.10.2/AndroidManifest.xml:25:13-36
+112            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+112-->[androidx.compose.ui:ui-test-manifest:1.10.2] /root/.gradle/caches/9.1.0/transforms/40f28cbe32c37c698d0312445aeaa131/transformed/ui-test-manifest-1.10.2/AndroidManifest.xml:26:13-76
+113
+114        <provider
+114-->[androidx.emoji2:emoji2:1.4.0] /root/.gradle/caches/9.1.0/transforms/67aa0ae3b52d983df24fe809c4e252f1/transformed/emoji2-1.4.0/AndroidManifest.xml:24:9-32:20
+115            android:name="androidx.startup.InitializationProvider"
+115-->[androidx.emoji2:emoji2:1.4.0] /root/.gradle/caches/9.1.0/transforms/67aa0ae3b52d983df24fe809c4e252f1/transformed/emoji2-1.4.0/AndroidManifest.xml:25:13-67
+116            android:authorities="com.zhiwei.security.androidx-startup"
+116-->[androidx.emoji2:emoji2:1.4.0] /root/.gradle/caches/9.1.0/transforms/67aa0ae3b52d983df24fe809c4e252f1/transformed/emoji2-1.4.0/AndroidManifest.xml:26:13-68
+117            android:exported="false" >
+117-->[androidx.emoji2:emoji2:1.4.0] /root/.gradle/caches/9.1.0/transforms/67aa0ae3b52d983df24fe809c4e252f1/transformed/emoji2-1.4.0/AndroidManifest.xml:27:13-37
+118            <meta-data
+118-->[androidx.emoji2:emoji2:1.4.0] /root/.gradle/caches/9.1.0/transforms/67aa0ae3b52d983df24fe809c4e252f1/transformed/emoji2-1.4.0/AndroidManifest.xml:29:13-31:52
+119                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+119-->[androidx.emoji2:emoji2:1.4.0] /root/.gradle/caches/9.1.0/transforms/67aa0ae3b52d983df24fe809c4e252f1/transformed/emoji2-1.4.0/AndroidManifest.xml:30:17-75
+120                android:value="androidx.startup" />
+120-->[androidx.emoji2:emoji2:1.4.0] /root/.gradle/caches/9.1.0/transforms/67aa0ae3b52d983df24fe809c4e252f1/transformed/emoji2-1.4.0/AndroidManifest.xml:31:17-49
+121            <meta-data
+121-->[androidx.lifecycle:lifecycle-process:2.9.4] /root/.gradle/caches/9.1.0/transforms/3037dec7abeb2e710587f33944477548/transformed/lifecycle-process-2.9.4/AndroidManifest.xml:29:13-31:52
+122                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+122-->[androidx.lifecycle:lifecycle-process:2.9.4] /root/.gradle/caches/9.1.0/transforms/3037dec7abeb2e710587f33944477548/transformed/lifecycle-process-2.9.4/AndroidManifest.xml:30:17-78
+123                android:value="androidx.startup" />
+123-->[androidx.lifecycle:lifecycle-process:2.9.4] /root/.gradle/caches/9.1.0/transforms/3037dec7abeb2e710587f33944477548/transformed/lifecycle-process-2.9.4/AndroidManifest.xml:31:17-49
+124            <meta-data
+124-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:29:13-31:52
+125                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+125-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:30:17-85
+126                android:value="androidx.startup" />
+126-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:31:17-49
+127        </provider>
+128
+129        <uses-library
+129-->[androidx.window:window:1.5.0] /root/.gradle/caches/9.1.0/transforms/e5a096c12fe00065a5d12f9ba6361ad5/transformed/window-1.5.0/AndroidManifest.xml:23:9-25:40
+130            android:name="androidx.window.extensions"
+130-->[androidx.window:window:1.5.0] /root/.gradle/caches/9.1.0/transforms/e5a096c12fe00065a5d12f9ba6361ad5/transformed/window-1.5.0/AndroidManifest.xml:24:13-54
+131            android:required="false" />
+131-->[androidx.window:window:1.5.0] /root/.gradle/caches/9.1.0/transforms/e5a096c12fe00065a5d12f9ba6361ad5/transformed/window-1.5.0/AndroidManifest.xml:25:13-37
+132        <uses-library
+132-->[androidx.window:window:1.5.0] /root/.gradle/caches/9.1.0/transforms/e5a096c12fe00065a5d12f9ba6361ad5/transformed/window-1.5.0/AndroidManifest.xml:26:9-28:40
+133            android:name="androidx.window.sidecar"
+133-->[androidx.window:window:1.5.0] /root/.gradle/caches/9.1.0/transforms/e5a096c12fe00065a5d12f9ba6361ad5/transformed/window-1.5.0/AndroidManifest.xml:27:13-51
+134            android:required="false" />
+134-->[androidx.window:window:1.5.0] /root/.gradle/caches/9.1.0/transforms/e5a096c12fe00065a5d12f9ba6361ad5/transformed/window-1.5.0/AndroidManifest.xml:28:13-37
+135
+136        <meta-data
+136-->[dev.rikka.shizuku:provider:13.1.5] /root/.gradle/caches/9.1.0/transforms/9e83737a73b054ed7ca1728564eb31a4/transformed/provider-13.1.5/AndroidManifest.xml:11:9-13:36
+137            android:name="moe.shizuku.client.V3_SUPPORT"
+137-->[dev.rikka.shizuku:provider:13.1.5] /root/.gradle/caches/9.1.0/transforms/9e83737a73b054ed7ca1728564eb31a4/transformed/provider-13.1.5/AndroidManifest.xml:12:13-57
+138            android:value="true" />
+138-->[dev.rikka.shizuku:provider:13.1.5] /root/.gradle/caches/9.1.0/transforms/9e83737a73b054ed7ca1728564eb31a4/transformed/provider-13.1.5/AndroidManifest.xml:13:13-33
+139
+140        <receiver
+140-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:34:9-52:20
+141            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+141-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:35:13-76
+142            android:directBootAware="false"
+142-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:36:13-44
+143            android:enabled="true"
+143-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:37:13-35
+144            android:exported="true"
+144-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:38:13-36
+145            android:permission="android.permission.DUMP" >
+145-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:39:13-57
+146            <intent-filter>
+146-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:40:13-42:29
+147                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+147-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:41:17-91
+147-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:41:25-88
+148            </intent-filter>
+149            <intent-filter>
+149-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:43:13-45:29
+150                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+150-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:44:17-85
+150-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:44:25-82
+151            </intent-filter>
+152            <intent-filter>
+152-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:46:13-48:29
+153                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+153-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:47:17-88
+153-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:47:25-85
+154            </intent-filter>
+155            <intent-filter>
+155-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:49:13-51:29
+156                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+156-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:50:17-95
+156-->[androidx.profileinstaller:profileinstaller:1.4.0] /root/.gradle/caches/9.1.0/transforms/96dbc6e66dbdb10c3d3618a97bf7c086/transformed/profileinstaller-1.4.0/AndroidManifest.xml:50:25-92
+157            </intent-filter>
+158        </receiver>
+159    </application>
+160
+161</manifest>

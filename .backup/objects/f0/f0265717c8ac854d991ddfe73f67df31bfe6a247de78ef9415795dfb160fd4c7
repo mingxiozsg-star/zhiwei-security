@@ -1,0 +1,80 @@
+package com.zhiwei.security.ui.theme
+
+import android.app.Activity
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.compose.material3.Typography as M3Typography
+
+private val DarkColorScheme = darkColorScheme(
+    primary = ZhiweiPink,
+    onPrimary = ZhiweiWhite,
+    primaryContainer = ZhiweiPinkDark,
+    onPrimaryContainer = ZhiweiWhite,
+    secondary = ZhiweiIceBlue,
+    onSecondary = ZhiweiBlack,
+    secondaryContainer = ZhiweiIceBlueLight,
+    onSecondaryContainer = ZhiweiBlack,
+    tertiary = ZhiweiPinkLight,
+    background = DarkBackground,
+    onBackground = DarkOnSurface,
+    surface = DarkSurface,
+    onSurface = DarkOnSurface,
+    surfaceVariant = DarkCard,
+    onSurfaceVariant = ZhiweiGray,
+    error = HighRiskRed,
+    onError = ZhiweiWhite
+)
+
+private val LightColorScheme = lightColorScheme(
+    primary = ZhiweiPink,
+    onPrimary = ZhiweiWhite,
+    primaryContainer = ZhiweiPinkLight,
+    onPrimaryContainer = ZhiweiBlack,
+    secondary = ZhiweiIceBlue,
+    onSecondary = ZhiweiWhite,
+    secondaryContainer = ZhiweiIceBlueLight,
+    onSecondaryContainer = ZhiweiBlack,
+    tertiary = ZhiweiPink,
+    background = LightBackground,
+    onBackground = LightOnSurface,
+    surface = LightSurface,
+    onSurface = LightOnSurface,
+    surfaceVariant = LightCard,
+    onSurfaceVariant = ZhiweiGray,
+    error = HighRiskRed,
+    onError = ZhiweiWhite
+)
+
+@Composable
+fun ZhiweiSecurityTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val view = LocalView.current
+
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = colorScheme.background.toArgb()
+            window.navigationBarColor = colorScheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+    }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography,
+        content = content
+    )
+}
