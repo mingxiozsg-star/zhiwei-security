@@ -35,6 +35,13 @@ import com.zhiwei.security.service.ProtectService
  * 权限引导页
  * 逐项检测核心权限状态并跳转系统设置，返回时自动刷新
  */
+private fun isA11yEnabled(context: android.content.Context): Boolean {
+    val enabled = android.provider.Settings.Secure.getString(
+        context.contentResolver,
+        android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+    ) ?: return false
+    return enabled.contains(context.packageName)
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PermissionScreen(navController: NavController) {
@@ -60,6 +67,15 @@ fun PermissionScreen(navController: NavController) {
 
     val items = remember(refreshTick) {
         listOf(
+            PermItem(
+                "无障碍守护服务",
+                "音量键三连击紧急斩杀、软件音量攻击检测、霸屏锁机检测（独立进程驻留，最核心权限）",
+                isA11yEnabled(context)
+            ) {
+                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+            },
             PermItem(
                 "使用情况访问",
                 "用于监控前台应用，发现黑名单应用启动时立即拦截（核心权限）",
