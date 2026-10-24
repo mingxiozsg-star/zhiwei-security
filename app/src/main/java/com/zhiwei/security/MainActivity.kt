@@ -32,12 +32,14 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    NavHost(navController = navController, startDestination = "home") {
+                    val startDest = if (Prefs.onboardingDone) "home" else "permissions"
+                    NavHost(navController = navController, startDestination = startDest) {
                         composable("home") { HomeScreen(navController) }
                         composable("scan") { ScanScreen(navController) }
                         composable("apps") { AppListScreen(navController) }
                         composable("protect") { ProtectScreen(navController) }
                         composable("settings") { SettingsScreen(navController) }
+                        composable("permissions") { PermissionScreen(navController) }
                     }
                 }
             }
