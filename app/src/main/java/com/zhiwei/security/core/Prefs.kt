@@ -52,6 +52,45 @@ object Prefs {
         get() = sp.getBoolean("onboarding_done", false)
         set(v) = sp.edit().putBoolean("onboarding_done", v).apply()
 
+    // ===== 功能开关 =====
+    /** 前台黑名单拦截 */
+    var interceptEnabled: Boolean
+        get() = sp.getBoolean("sw_intercept", true)
+        set(v) = sp.edit().putBoolean("sw_intercept", v).apply()
+
+    /** 音量键管控（三连击斩杀 + 软拉满检测） */
+    var volumeGuardEnabled: Boolean
+        get() = sp.getBoolean("sw_volume_guard", true)
+        set(v) = sp.edit().putBoolean("sw_volume_guard", v).apply()
+
+    /** 无障碍霸占管控 */
+    var a11yGuardEnabled: Boolean
+        get() = sp.getBoolean("sw_a11y_guard", true)
+        set(v) = sp.edit().putBoolean("sw_a11y_guard", v).apply()
+
+    /** 安装后自动扫描 */
+    var installScanEnabled: Boolean
+        get() = sp.getBoolean("sw_install_scan", true)
+        set(v) = sp.edit().putBoolean("sw_install_scan", v).apply()
+
+    /** 后台网络拦截（VPN 黑洞） */
+    var netGuardEnabled: Boolean
+        get() = sp.getBoolean("sw_net_guard", false)
+        set(v) = sp.edit().putBoolean("sw_net_guard", v).apply()
+
+    /** 隐藏后台卡片 */
+    var hideRecentsEnabled: Boolean
+        get() = sp.getBoolean("sw_hide_recents", false)
+        set(v) = sp.edit().putBoolean("sw_hide_recents", v).apply()
+
+    /** 被网络拦截的应用 */
+    var netBlocked: Set<String>
+        get() = sp.getStringSet("net_blocked", emptySet()) ?: emptySet()
+        set(v) = sp.edit().putStringSet("net_blocked", v).apply()
+
+    fun addToNetBlocked(pkg: String) { netBlocked = netBlocked + pkg }
+    fun removeFromNetBlocked(pkg: String) { netBlocked = netBlocked - pkg }
+
     fun addToBlacklist(pkg: String) { blacklist = blacklist + pkg }
     fun removeFromBlacklist(pkg: String) { blacklist = blacklist - pkg }
     fun addToWhitelist(pkg: String) { whitelist = whitelist + pkg }
