@@ -19,6 +19,8 @@ class ZhiweiApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        com.zhiwei.security.core.Prefs.init(this)
+        com.zhiwei.security.core.ShizukuManager.init()
         createNotificationChannels()
     }
 
