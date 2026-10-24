@@ -47,6 +47,11 @@ object Prefs {
         get() = sp.getBoolean("shizuku_granted", false)
         set(v) = sp.edit().putBoolean("shizuku_granted", v).apply()
 
+    // 首次启动引导完成标记
+    var onboardingDone: Boolean
+        get() = sp.getBoolean("onboarding_done", false)
+        set(v) = sp.edit().putBoolean("onboarding_done", v).apply()
+
     fun addToBlacklist(pkg: String) { blacklist = blacklist + pkg }
     fun removeFromBlacklist(pkg: String) { blacklist = blacklist - pkg }
     fun addToWhitelist(pkg: String) { whitelist = whitelist + pkg }
