@@ -9,6 +9,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 
+/**
+ * 应用扫描引擎
+ * 规则：
+ * - 系统应用（FLAG_SYSTEM）默认安全，只核对恶意包名和恶意签名
+ * - 第三方应用按权限评分，单项权限不构成威胁，组合才算
+ * - 用户白名单直接跳过
+ */
 class AppScanner(private val context: Context) {
 
     private val pm: PackageManager = context.packageManager
@@ -42,13 +49,14 @@ class AppScanner(private val context: Context) {
 
             onProgress(ScanProgress(index + 1, total, appName, threats.toList()))
 
-            // 跳过白名单
-            if (pkg.packageName in Prefs.whitelist || pkg.packageName in VirusDb.systemWhitelist) {
-                return@forEachIndexed
-            }
+            // 用户白名单跳过
+            if (pkg.packageName in Prefs.whitelist) return@forEachIndexed
 
-            val result = analyzePackage(pkg)
-            if (result.level != VirusDb.ThreatLevel.SAFE && result.level != VirusDb.ThreatLevel.LOW) {
+            val result = analyzePackage(pkg) ?: return@forEachIndexed
+            // 只有中风险及以上才进威胁列表
+            if (result.level == VirusDb.ThreatLevel.MEDIUM ||
+                result.level == VirusDb.ThreatLevel.HIGH ||
+                result.level == VirusDb.ThreatLevel.VIRUS) {
                 threats.add(result)
             }
         }
@@ -60,110 +68,117 @@ class AppScanner(private val context: Context) {
         threats.sortedByDescending { it.score }
     }
 
-    private fun analyzePackage(pkg: PackageInfo): VirusDb.ScanResult {
-        val reasons = mutableListOf<String>()
-        var score = 0
-
+    /** 分析单个应用；返回 null 表示完全安全不值得报告 */
+    fun analyzePackage(pkg: PackageInfo): VirusDb.ScanResult? {
         val appName = try {
             pkg.applicationInfo?.loadLabel(pm)?.toString() ?: pkg.packageName
         } catch (e: Exception) {
             pkg.packageName
         }
 
-        val isSystem = (pkg.applicationInfo?.flags ?: 0) and ApplicationInfo.FLAG_SYSTEM != 0
+        val flags = pkg.applicationInfo?.flags ?: 0
+        val isSystem = flags and ApplicationInfo.FLAG_SYSTEM != 0 ||
+                flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0
         val permissions = pkg.requestedPermissions?.toList() ?: emptyList()
+        val reasons = mutableListOf<String>()
 
-        // 1. 黑名单包名直接判病毒
+        // 1. 恶意包名名单：无论系统与否都判病毒
         if (pkg.packageName in VirusDb.maliciousPackages) {
-            score = 100
-            reasons.add("已知恶意应用包名")
             return VirusDb.ScanResult(
                 pkg.packageName, appName, VirusDb.ThreatLevel.VIRUS,
-                score, reasons, permissions, isSystem,
+                100, listOf("命中恶意应用名单"), permissions, isSystem,
                 pkg.versionName, pkg.applicationInfo?.sourceDir
             )
         }
 
-        // 2. 权限风险评分
-        var permScore = 0
-        val grantedDangerous = mutableListOf<String>()
-        permissions.forEach { perm ->
-            VirusDb.dangerousPermissions[perm]?.let { risk ->
-                permScore += risk
-                grantedDangerous.add(perm)
-            }
+        // 2. 恶意签名
+        if (checkMaliciousSignature(pkg)) {
+            return VirusDb.ScanResult(
+                pkg.packageName, appName, VirusDb.ThreatLevel.VIRUS,
+                100, listOf("命中恶意签名特征"), permissions, isSystem,
+                pkg.versionName, pkg.applicationInfo?.sourceDir
+            )
         }
 
-        // 3. 高危权限组合检测
+        // 3. 系统应用到此为止——不再按权限评分，避免误报
+        if (isSystem) return null
+
+        // 4. 第三方应用：权限评分
+        val grantedDangerous = permissions.filter { it in VirusDb.dangerousPermissions }
+        var score = grantedDangerous.sumOf { VirusDb.dangerousPermissions[it] ?: 0 }
+
+        // 5. 高危组合加成
         VirusDb.dangerousCombos.forEach { combo ->
-            if (grantedDangerous.containsAll(combo)) {
-                val comboScore = combo.sumOf { VirusDb.dangerousPermissions[it] ?: 0 } + 20
-                permScore += comboScore
-                reasons.add("高危权限组合: ${combo.joinToString("+") { it.substringAfterLast(".") }}")
+            if (grantedDangerous.containsAll(combo.perms)) {
+                score += combo.bonus
+                reasons.add(combo.label)
             }
         }
 
-        score = permScore.coerceAtMost(100)
-
-        // 4. 单项高危权限原因
-        if (grantedDangerous.contains("android.permission.BIND_DEVICE_ADMIN")) {
-            reasons.add("请求设备管理器权限")
+        // 6. 单项显著风险说明
+        if ("android.permission.BIND_DEVICE_ADMIN" in grantedDangerous) {
+            reasons.add("请求设备管理器权限（可锁屏/改密码）")
         }
-        if (grantedDangerous.contains("android.permission.SYSTEM_ALERT_WINDOW")) {
-            reasons.add("请求悬浮窗权限")
+        if ("android.permission.BIND_ACCESSIBILITY_SERVICE" in grantedDangerous) {
+            reasons.add("包含无障碍服务（可模拟操作）")
         }
-        if (grantedDangerous.contains("android.permission.BIND_ACCESSIBILITY_SERVICE")) {
-            reasons.add("请求无障碍服务权限")
+        if ("android.permission.DISABLE_KEYGUARD" in grantedDangerous) {
+            reasons.add("请求禁用锁屏权限")
         }
-        if (grantedDangerous.contains("android.permission.BIND_NOTIFICATION_LISTENER_SERVICE")) {
-            reasons.add("请求通知监听权限")
-        }
-        if (grantedDangerous.contains("android.permission.FACTORY_RESET") ||
-            grantedDangerous.contains("android.permission.MASTER_CLEAR")) {
-            reasons.add("请求恢复出厂设置权限")
+        if (grantedDangerous.size >= 8) {
+            score += 10
+            reasons.add("请求高危权限过多（${grantedDangerous.size} 项）")
         }
 
-        // 5. 签名验证（可选）
-        try {
+        score = score.coerceAtMost(100)
+
+        val level = when {
+            score >= 70 -> VirusDb.ThreatLevel.VIRUS
+            score >= 50 -> VirusDb.ThreatLevel.HIGH
+            score >= 30 -> VirusDb.ThreatLevel.MEDIUM
+            score >= 15 -> VirusDb.ThreatLevel.LOW
+            else -> VirusDb.ThreatLevel.SAFE
+        }
+
+        if (reasons.isEmpty() && level != VirusDb.ThreatLevel.SAFE) {
+            reasons.add("综合权限风险评分 $score")
+        }
+
+        return VirusDb.ScanResult(
+            pkg.packageName, appName, level, score,
+            reasons, grantedDangerous, false,
+            pkg.versionName, pkg.applicationInfo?.sourceDir
+        )
+    }
+
+    /** 分析单个包名（ProtectService 检测新装应用用） */
+    fun analyzePackageName(pkgName: String): VirusDb.ScanResult? {
+        return try {
+            val pkg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getPackageInfo(pkgName, PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(pkgName, PackageManager.GET_PERMISSIONS)
+            }
+            analyzePackage(pkg)
+        } catch (e: Exception) { null }
+    }
+
+    private fun checkMaliciousSignature(pkg: PackageInfo): Boolean {
+        if (VirusDb.maliciousSignatures.isEmpty()) return false
+        return try {
             val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 pkg.signingInfo?.apkContentsSigners
             } else {
                 @Suppress("DEPRECATION")
                 pkg.signatures
             }
-            signatures?.forEach { sig ->
-                val md5 = md5Hex(sig.toByteArray())
-                if (md5 in VirusDb.maliciousSignatures) {
-                    score = 100
-                    reasons.add("恶意签名特征")
-                }
-            }
-        } catch (e: Exception) { /* ignore */ }
-
-        // 6. 非系统应用且请求大量高危权限
-        if (!isSystem && grantedDangerous.size >= 5) {
-            score = (score + 15).coerceAtMost(100)
-            reasons.add("请求大量高危权限(${grantedDangerous.size}项)")
-        }
-
-        val level = when {
-            score >= 80 -> VirusDb.ThreatLevel.VIRUS
-            score >= 60 -> VirusDb.ThreatLevel.HIGH
-            score >= 35 -> VirusDb.ThreatLevel.MEDIUM
-            score >= 15 -> VirusDb.ThreatLevel.LOW
-            else -> VirusDb.ThreatLevel.SAFE
-        }
-
-        return VirusDb.ScanResult(
-            pkg.packageName, appName, level, score,
-            reasons, grantedDangerous, isSystem,
-            pkg.versionName, pkg.applicationInfo?.sourceDir
-        )
+            signatures?.any { md5Hex(it.toByteArray()) in VirusDb.maliciousSignatures } == true
+        } catch (e: Exception) { false }
     }
 
     private fun md5Hex(data: ByteArray): String {
         val md = MessageDigest.getInstance("MD5")
-        val digest = md.digest(data)
-        return digest.joinToString("") { "%02x".format(it) }
+        return md.digest(data).joinToString("") { "%02x".format(it) }
     }
 }
