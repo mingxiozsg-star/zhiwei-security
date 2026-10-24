@@ -58,5 +58,24 @@ class MainActivity : ComponentActivity() {
         try {
             startForegroundService(Intent(this, GuardService::class.java))
         } catch (e: Exception) { }
+        try {
+            startForegroundService(Intent(this, GuardService2::class.java))
+        } catch (e: Exception) { }
+        try {
+            startForegroundService(Intent(this, GuardService3::class.java))
+        } catch (e: Exception) { }
+        // 网络拦截（需用户先在设置里开启并完成 VPN 授权）
+        if (Prefs.netGuardEnabled) {
+            try { com.zhiwei.security.service.NetGuardService.start(this) } catch (e: Exception) { }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 隐藏后台卡片（防手动划掉）
+        try {
+            val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+            am.appTasks?.forEach { it.setExcludeFromRecents(Prefs.hideRecentsEnabled) }
+        } catch (e: Exception) { }
     }
 }
