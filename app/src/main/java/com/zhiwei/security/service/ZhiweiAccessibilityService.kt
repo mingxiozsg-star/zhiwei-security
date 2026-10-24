@@ -8,6 +8,7 @@ import android.os.Looper
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
+import com.zhiwei.security.core.AppScanner
 import com.zhiwei.security.core.PanicKill
 import com.zhiwei.security.core.Prefs
 import com.zhiwei.security.core.ShizukuManager
