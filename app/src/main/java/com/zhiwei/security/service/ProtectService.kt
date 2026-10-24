@@ -159,6 +159,7 @@ class ProtectService : Service() {
     }
 
     private fun checkForegroundApp() {
+        if (!Prefs.interceptEnabled) return
         // 屏幕熄灭时不检查，省电
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         if (!pm.isInteractive) return
@@ -236,6 +237,7 @@ class ProtectService : Service() {
     }
 
     private fun checkNewApp(pkg: String) {
+        if (!Prefs.installScanEnabled) return
         if (pkg in Prefs.whitelist) return
         val result = scanner.analyzePackageName(pkg) ?: return
         if (result.level == VirusDb.ThreatLevel.HIGH || result.level == VirusDb.ThreatLevel.VIRUS) {
