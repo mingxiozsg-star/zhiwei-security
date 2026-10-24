@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">知微安全</string>
+    <string name="a11y_desc">知微安全守护：监听音量键紧急自救（音量上键三连击斩杀恶意应用）、检测软件恶意拉满音量、检测无障碍霸屏锁机行为。</string>
 </resources>
