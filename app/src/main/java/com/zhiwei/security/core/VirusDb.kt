@@ -36,6 +36,11 @@ object VirusDb {
         "com.ghrsak",                // AK注入器
         "com.9178",                  // 龙卷锁机生成器 / Runaway
         "com.kskbl",                 // 黑客开户最新版
+        // 第三批：用户实采样本解包提取（zip 内 APK 真实包名）
+        "com.bangbangtang.lock",     // 无权限锁机（SYSTEM_ALERT_WINDOW+开机自启+READ_LOGS）
+        "com.xielunyan.xlynb",       // 腾龙十层锁机生成器（AndroLua 壳，assets 内含锁机 lua 脚本）
+        "jamesxu.biuedittext",       // 初凉锁机生成器（MT 生成器壳，104 项权限）
+        "com.automsg.qqxqg",         // 9178 样本「自动扣字」（QQ 自动扣字刷屏）
         // 远控木马（C2/RAT，公开分析报告样本）
         "Glasgow.pl.dimensional",   // SpyNote RAT（短信钓鱼传播，C2 37.120.141.140:7775，SHA256 bad77dca...）
         "ahmyth.mine.king.ahmyth",  // AhMyth RAT 默认包名
@@ -63,7 +68,9 @@ object VirusDb {
         "免流", "炸房", "勒索解锁", "强制解锁", "王者改皮肤", "美化包破解",
         "刷会员", "免费会员破解", "刷枪", "游戏外挂",
         // 锁机生成器名称（生成器本体也是高危对象）
-        "锁机生成器", "锁机软件生成器", "一键生成锁机"
+        "锁机生成器", "锁机软件生成器", "一键生成锁机",
+        // 第三批样本补充：格机/轰炸/测压/扣字类工具名
+        "格机", "短信轰炸", "电话轰炸", "短信测压", "自动扣字", "轰炸神器"
     )
 
     /**
@@ -148,7 +155,11 @@ object VirusDb {
         "com.natureclear.elenta.cleaner",
         "com.asterix.clearspace.cleaner",
         "com.purefone.cleanmastera",
-        "com.car.speed.adventure"
+        "com.car.speed.adventure",
+        // 第三批实采：游戏作弊/灰色工具壳（同包名多马甲分发，判 HIGH 不判 VIRUS）
+        "io.shencha.gj",      // 金铲铲无限金币/和平精英推荐配置/内透辅助大全（同壳多马甲）
+        "com.Tong.nb",        // 小满公益直装/六花直装/金砖弱网/NBT刷物（同壳多马甲）
+        "com.Mixo.XiaoBao"    // 小黄鸭科技/狐狸公益科技（免 root 辅助，17 项权限）
     )
 
     /** C2 服务器失陷指标（公开分析报告提取，供情报记录/后续网络拦截使用） */

@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.zhiwei.security.core.AdbPairing
 import com.zhiwei.security.core.AdbShell
 import com.zhiwei.security.core.DhizukuManager
 import com.zhiwei.security.core.PermissionRevoker
@@ -296,8 +297,11 @@ fun SettingsScreen(navController: NavController) {
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+            val verName = remember {
+                try { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "" } catch (e: Exception) { "" }
+            }
             Text(
-                "知微安全 v1.1 · 见微知著",
+                "知微安全 v$verName · 见微知著",
                 fontSize = 12.sp,
                 color = Color(0xFF606070),
                 modifier = Modifier.fillMaxWidth()
@@ -357,18 +361,21 @@ private fun StatRow(label: String, value: String) {
 }
 
 /**
- * 本机 ADB 自提权激活对话框（LADB 方案）
- * 步骤：设置 → 开发者选项 → 无线调试 → 使用配对码配对设备（拿 IP:配对端口+配对码）
- *      回到无线调试首页拿 IP:连接端口
+ * 本机 ADB 自提权激活对话框（内置一键配对，Shizuku 同款 mDNS 方案）
+ * 默认自动模式：App 自动发现配对/连接端口，用户只需填 6 位配对码。
+ * 「手动模式」作为老旧设备/发现失败时的兜底。
  */
 @Composable
 private fun AdbActivationDialog(onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var pairCode by remember { mutableStateOf("") }
+    var log by remember { mutableStateOf("一键激活：\n1. 打开 开发者选项 → 无线调试\n2. 点「使用配对码配对设备」，弹窗别关\n3. 回来填 6 位配对码，点「一键激活」\n（IP/端口自动发现，不用手抄）") }
+    var busy by remember { mutableStateOf(false) }
+    var manual by remember { mutableStateOf(false) }
+    // 手动模式字段
     var ip by remember { mutableStateOf(Prefs.adbHost.ifEmpty { "127.0.0.1" }) }
     var pairPort by remember { mutableStateOf("") }
-    var pairCode by remember { mutableStateOf("") }
     var connectPort by remember { mutableStateOf(if (Prefs.adbPort > 0) Prefs.adbPort.toString() else "") }
-    var log by remember { mutableStateOf("1. 打开「无线调试」→「使用配对码配对设备」\n2. 填入 IP / 配对端口 / 配对码，点「配对」\n3. 回到无线调试首页，看「IP 地址和端口」，填入连接端口，点「连接」") }
-    var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     AlertDialog(
@@ -378,58 +385,87 @@ private fun AdbActivationDialog(onDismiss: () -> Unit) {
         text = {
             Column {
                 Text(log, fontSize = 12.sp, color = Color(0xFF9090A0))
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = ip, onValueChange = { ip = it },
-                    label = { Text("IP 地址") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = pairPort, onValueChange = { pairPort = it.filter { c -> c.isDigit() } },
-                    label = { Text("配对端口（配对弹窗里）") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = pairCode, onValueChange = { pairCode = it.filter { c -> c.isDigit() } },
-                    label = { Text("配对码（6位）") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = connectPort, onValueChange = { connectPort = it.filter { c -> c.isDigit() } },
-                    label = { Text("连接端口（无线调试首页）") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Spacer(modifier = Modifier.height(10.dp))
+                if (!manual) {
+                    OutlinedTextField(
+                        value = pairCode, onValueChange = { pairCode = it.filter { c -> c.isDigit() }.take(6) },
+                        label = { Text("配对码（6 位）") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    TextButton(onClick = { manual = true }) {
+                        Text("自动发现失败？切手动模式 →", color = Color(0xFF7EC8E3), fontSize = 13.sp)
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = ip, onValueChange = { ip = it },
+                        label = { Text("IP 地址") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = pairPort, onValueChange = { pairPort = it.filter { c -> c.isDigit() } },
+                        label = { Text("配对端口（配对弹窗里）") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = pairCode, onValueChange = { pairCode = it.filter { c -> c.isDigit() } },
+                        label = { Text("配对码（6位）") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = connectPort, onValueChange = { connectPort = it.filter { c -> c.isDigit() } },
+                        label = { Text("连接端口（无线调试首页）") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    TextButton(onClick = { manual = false }) {
+                        Text("← 返回一键模式", color = Color(0xFF7EC8E3), fontSize = 13.sp)
+                    }
+                }
             }
         },
         confirmButton = {
             Row {
-                TextButton(
-                    enabled = !busy && pairPort.isNotEmpty() && pairCode.isNotEmpty(),
-                    onClick = {
-                        busy = true
-                        scope.launch {
-                            val (ok, out) = withContext(Dispatchers.IO) {
-                                AdbShell.pair(ip, pairPort.toIntOrNull() ?: 0, pairCode)
+                if (!manual) {
+                    TextButton(
+                        enabled = !busy && pairCode.length == 6,
+                        onClick = {
+                            busy = true
+                            scope.launch {
+                                val ok = AdbPairing.autoActivate(context, pairCode) { log = it }
+                                busy = false
+                                if (ok) onDismiss()
                             }
-                            log = if (ok) "✅ 配对成功，继续点「连接」" else "❌ 配对失败：$out"
-                            busy = false
                         }
-                    }
-                ) { Text("配对") }
-                TextButton(
-                    enabled = !busy && connectPort.isNotEmpty(),
-                    onClick = {
-                        busy = true
-                        scope.launch {
-                            val (ok, out) = withContext(Dispatchers.IO) {
-                                AdbShell.connect(ip, connectPort.toIntOrNull() ?: 0)
+                    ) { Text(if (busy) "激活中…" else "一键激活", color = Color(0xFFFF6B9D)) }
+                } else {
+                    TextButton(
+                        enabled = !busy && pairPort.isNotEmpty() && pairCode.isNotEmpty(),
+                        onClick = {
+                            busy = true
+                            scope.launch {
+                                val (ok, out) = withContext(Dispatchers.IO) {
+                                    AdbShell.pair(ip, pairPort.toIntOrNull() ?: 0, pairCode)
+                                }
+                                log = if (ok) "✅ 配对成功，继续点「连接」" else "❌ 配对失败：$out"
+                                busy = false
                             }
-                            log = if (ok) "✅ 已连接，提权通道就绪" else "❌ 连接失败：$out"
-                            busy = false
-                            if (ok) onDismiss()
                         }
-                    }
-                ) { Text("连接") }
+                    ) { Text("配对") }
+                    TextButton(
+                        enabled = !busy && connectPort.isNotEmpty(),
+                        onClick = {
+                            busy = true
+                            scope.launch {
+                                val (ok, out) = withContext(Dispatchers.IO) {
+                                    AdbShell.connect(ip, connectPort.toIntOrNull() ?: 0)
+                                }
+                                log = if (ok) "✅ 已连接，提权通道就绪" else "❌ 连接失败：$out"
+                                busy = false
+                                if (ok) onDismiss()
+                            }
+                        }
+                    ) { Text("连接") }
+                }
             }
         },
         dismissButton = {
