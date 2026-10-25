@@ -22,6 +22,15 @@
     <!-- Shizuku -->
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
 
+    <!-- 内置 Dhizuku 服务端 API 权限（第三方客户端需声明） -->
+    <permission
+        android:name="com.zhiwei.security.permission.API"
+        android:label="使用知微特权服务"
+        android:protectionLevel="normal" />
+
+    <!-- 安装下载的更新包 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:name=".ZhiweiApp"
         android:allowBackup="true"
@@ -165,6 +174,50 @@
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- 内置 Dhizuku 服务端：Provider（官方协议发现机制） -->
+        <provider
+            android:name=".dhizuku.ZhiweiDhizukuProvider"
+            android:authorities="com.zhiwei.security.dhizuku_server.provider"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="com.zhiwei.security.permission.API" />
+
+        <!-- 内置 Dhizuku 服务端：设备所有者接收器 -->
+        <receiver
+            android:name=".dhizuku.ZhiweiDAReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/zhiwei_device_admin" />
+        </receiver>
+
+        <!-- 内置 Dhizuku 服务端：授权申请页（官方协议 activity） -->
+        <activity
+            android:name=".ui.DhizukuGrantActivity"
+            android:exported="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="com.zhiwei.security.action.REQUEST_DHIZUKU_PERMISSION" />
+            </intent-filter>
+        </activity>
+
+        <!-- 更新包安装 FileProvider -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.zhiwei.security.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <!-- 病毒警告 -->
         <activity

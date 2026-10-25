@@ -1,5 +1,26 @@
 # 更新日志
 
+## v1.4.0（2026-10-26）
+
+### 内置 Dhizuku 服务端（完整官方协议）
+- 新增 `dhizuku/` 包：`DhizukuServer`（官方 IDhizuku 协议完整实现：remote binder 转发、remoteProcess 全双工进程、bindUserService 反射加载客户端类、delegatedScopes、LockTaskMode 事件转发，SERVER_VERSION_CODE=8）
+- `ZhiweiDhizukuProvider`（authority=com.zhiwei.security.dhizuku_server.provider，官方发现机制，任何 Dhizuku-API 应用自动识别）
+- `DhizukuGrantActivity`（官方授权申请页，允许/拒绝回调 IDhizukuRequestPermissionListener）
+- `ZhiweiDAReceiver` 设备所有者锚点 + zhiwei_device_admin.xml（9 项策略）
+- 与 v1.3.0 知微特权服务共用同一授权库 AuthDb
+
+### 音量键斩杀兜底通道
+- ProtectService 新增音量监听（300ms 轮询媒体音量，2 秒内变化 3 次以上触发斩杀），不依赖无障碍，任何 ROM 生效
+- 与无障碍通道（狂按 3 次）双通道并存
+
+### 关于我们 + 软件更新
+- 新增「关于我们」页（ROAM 风格：品牌头部 + 软件更新胶囊按钮 + 版本信息卡 + 开源致谢）
+- 软件更新走 GitHub Releases API，应用内流式下载 + FileProvider 调起安装
+
+### 提权中心独立页
+- uid.system / 本机 ADB 一键配对 / Dhizuku 服务端一键激活（dpm set-device-owner）/ Shizuku / Dhizuku 外部兼容，一页管完
+- 设置页「提权通道」改为入口跳转；新增「关于我们」入口
+
 ## v1.3.0（2026-10-25）
 
 ### 知微特权服务（Shizuku 式完整授权架构）

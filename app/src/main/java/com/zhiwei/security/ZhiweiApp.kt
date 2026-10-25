@@ -22,6 +22,7 @@ class ZhiweiApp : Application() {
         com.zhiwei.security.core.Prefs.init(this)
         com.zhiwei.security.core.AuthDb.init(this)
         com.zhiwei.security.service.ZhiweiApiServiceHolder.context = this
+        com.zhiwei.security.dhizuku.DhizukuServer.context = this
         com.zhiwei.security.core.ShizukuManager.init()
         com.zhiwei.security.core.AdbShell.init(this)
         com.zhiwei.security.core.Privilege.warmup()

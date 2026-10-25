@@ -40,12 +40,48 @@ import com.zhiwei.security.ui.ShieldWarnActivity
  * 4. 无 UsageStats 权限时降级为屏幕事件检测
  */
 class ProtectService : Service() {
-
-    private var wakeLock: PowerManager.WakeLock? = null
+private var wakeLock: PowerManager.WakeLock? = null
     private val handler = Handler(Looper.getMainLooper())
     private var screenReceiver: BroadcastReceiver? = null
     private var packageReceiver: BroadcastReceiver? = null
     private lateinit var scanner: AppScanner
+
+    // ===== 音量狂按斩杀（兜底通道，不依赖无障碍，任何 ROM 生效） =====
+    // 原理：用户狂按音量键 → 系统音量值连续变化。2 秒内变化 3 次以上 → 触发斩杀
+    private var audioManager: android.media.AudioManager? = null
+    private var lastVolValue = -1
+    private var volChangeTimes = LongArray(0)
+
+    private val volumeWatcher = object : Runnable {
+        override fun run() {
+            try {
+                if (Prefs.volumeGuardEnabled) {
+                    val am = audioManager
+                        ?: (getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager).also { audioManager = it }
+                    val v = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+                    if (lastVolValue >= 0 && v != lastVolValue) {
+                        val now = System.currentTimeMillis()
+                        volChangeTimes = (volChangeTimes + now).filter { now - it <= 2_000L }.toLongArray()
+                        if (volChangeTimes.size >= 3) {
+                            volChangeTimes = LongArray(0)
+                            android.widget.Toast.makeText(this@ProtectService,
+                                "🚨 知微安全：紧急斩杀已触发", android.widget.Toast.LENGTH_LONG).show()
+                            thread {
+                                val killed = com.zhiwei.security.core.PanicKill.killAllThirdParty(this@ProtectService)
+                                handler.post {
+                                    android.widget.Toast.makeText(this@ProtectService,
+                                        "已斩杀 $killed 个第三方应用", android.widget.Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    }
+                    lastVolValue = v
+                }
+            } catch (e: Throwable) { }
+            handler.postDelayed(this, 300L)
+        }
+    }
+
 
     // 记录最近一次拦截的包名+时间，避免对同一应用 1 秒内重复弹窗
     private var lastBlockedPkg = ""
@@ -124,6 +160,7 @@ class ProtectService : Service() {
         registerScreenReceiver()
         registerPackageReceiver()
         handler.post(foregroundWatcher)
+        handler.post(volumeWatcher)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -136,6 +173,7 @@ class ProtectService : Service() {
     override fun onDestroy() {
         isRunning = false
         handler.removeCallbacks(foregroundWatcher)
+        handler.removeCallbacks(volumeWatcher)
         unregisterReceivers()
         releaseWakeLock()
         super.onDestroy()

@@ -48,6 +48,8 @@ class MainActivity : ComponentActivity() {
                         composable("protect") { ProtectScreen(navController) }
                         composable("settings") { SettingsScreen(navController) }
                         composable("permissions") { PermissionScreen(navController) }
+                        composable("about") { AboutScreen(navController) }
+                        composable("privilege") { PrivilegeScreen(navController) }
                     }
                 }
             }

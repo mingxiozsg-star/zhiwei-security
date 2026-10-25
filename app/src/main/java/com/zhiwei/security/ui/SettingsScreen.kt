@@ -145,79 +145,30 @@ fun SettingsScreen(navController: NavController) {
             SwitchItem("隐藏后台卡片", "在最近任务列表中隐藏，防止被手动划掉杀掉", hideRecents) {
                 hideRecents = it; Prefs.hideRecentsEnabled = it
             }
-
-            // ===== 提权状态 =====
+            // ===== 提权中心入口 =====
             SectionTitle("提权通道")
 
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+                onClick = { navController.navigate("privilege") }
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("当前提权状态", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                            Text(Privilege.statusText, fontSize = 13.sp, color = Color(0xFF7EC8E3))
-                        }
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("提权中心", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("uid.system / 本机 ADB / Dhizuku 服务端 / Shizuku 一页管理", fontSize = 13.sp, color = Color(0xFF9090A0))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(Privilege.statusText, fontSize = 13.sp, color = Color(0xFF7EC8E3))
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("系统级提权（android.uid.system）", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                            Text(
-                                if (Privilege.isSystemUid) "已生效：当前运行于系统 uid"
-                                else "未生效：需安装 system 渠道包（testkey 签名的系统可用）",
-                                fontSize = 13.sp, color = Color(0xFF9090A0)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("本机 ADB 自提权", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                            Text(
-                                if (AdbShell.isConnected) "已连接 ${AdbShell.connectedDevice ?: ""}"
-                                else "未连接 · 开启无线调试后在此配对",
-                                fontSize = 13.sp, color = Color(0xFF9090A0)
-                            )
-                        }
-                        TextButton(onClick = { showAdbDialog = true }) {
-                            Text(if (AdbShell.isConnected) "重新连接" else "激活", color = Color(0xFFFF6B9D))
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Shizuku", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                            Text(ShizukuManager.statusText, fontSize = 13.sp, color = Color(0xFF9090A0))
-                        }
-                        if (!ShizukuManager.isReady && ShizukuManager.isBinderAlive) {
-                            TextButton(onClick = { ShizukuManager.requestPermission { } }) {
-                                Text("授权", color = Color(0xFFFF6B9D))
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Dhizuku（设备所有者）", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                            Text(DhizukuManager.statusText(context), fontSize = 13.sp, color = Color(0xFF9090A0))
-                        }
-                        if (DhizukuManager.isInstalled(context)) {
-                            TextButton(onClick = {
-                                if (DhizukuManager.isReady(context)) {
-                                    DhizukuManager.openDhizuku(context)
-                                } else {
-                                    DhizukuManager.requestPermission { adbRefresh++ }
-                                }
-                            }) {
-                                Text(if (DhizukuManager.isReady(context)) "打开" else "授权", color = Color(0xFFFF6B9D))
-                            }
-                        }
-                    }
+                    Text("›", fontSize = 28.sp, color = Color(0xFFFF6B9D))
                 }
             }
+
 
             // ===== 授权管理（知微特权服务） =====
             SectionTitle("授权管理")
@@ -386,6 +337,28 @@ fun SettingsScreen(navController: NavController) {
                 }
             }
 
+            // ===== 关于入口 =====
+            SectionTitle("其他")
+
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+                onClick = { navController.navigate("about") }
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("关于我们", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("版本信息 · 软件更新（应用内下载）", fontSize = 13.sp, color = Color(0xFF9090A0))
+                    }
+                    Text("›", fontSize = 28.sp, color = Color(0xFFFF6B9D))
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
             val verName = remember {
                 try { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "" } catch (e: Exception) { "" }
@@ -456,7 +429,7 @@ private fun StatRow(label: String, value: String) {
  * 「手动模式」作为老旧设备/发现失败时的兜底。
  */
 @Composable
-private fun AdbActivationDialog(onDismiss: () -> Unit) {
+internal fun AdbActivationDialog(onDismiss: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var pairCode by remember { mutableStateOf("") }
     var log by remember { mutableStateOf("一键激活：\n1. 打开 开发者选项 → 无线调试\n2. 点「使用配对码配对设备」，弹窗别关\n3. 回来填 6 位配对码，点「一键激活」\n（IP/端口自动发现，不用手抄）") }
