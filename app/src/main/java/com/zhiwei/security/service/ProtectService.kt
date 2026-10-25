@@ -69,8 +69,10 @@ private var wakeLock: PowerManager.WakeLock? = null
                             thread {
                                 val killed = com.zhiwei.security.core.PanicKill.killAllThirdParty(this@ProtectService)
                                 handler.post {
+                                    val msg = if (killed >= 0) "已斩杀 $killed 个第三方应用（前台+后台全部杀光）"
+                                        else "已清理 ${-killed} 个第三方应用后台进程（前台应用需激活提权通道才能强杀）"
                                     android.widget.Toast.makeText(this@ProtectService,
-                                        "已斩杀 $killed 个第三方应用", android.widget.Toast.LENGTH_LONG).show()
+                                        msg, android.widget.Toast.LENGTH_LONG).show()
                                 }
                             }
                         }

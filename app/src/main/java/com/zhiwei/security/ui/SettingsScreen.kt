@@ -187,6 +187,10 @@ fun SettingsScreen(navController: NavController) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("其他应用可申请授权，通过知微的提权通道执行命令（Shizuku 式架构）",
                         fontSize = 13.sp, color = Color(0xFF9090A0))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextButton(onClick = { navController.navigate("auth") }) {
+                        Text("手动授权管理（授予/撤销/白名单）→", color = Color(0xFFFF6B9D), fontSize = 14.sp)
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     SwitchItem("危险命令拦截", "已授权应用执行危险命令时弹窗确认（允许一次/不允许/加入白名单）；普通命令不拦截", cmdIntercept) {
                         cmdIntercept = it; AuthDb.cmdInterceptEnabled = it

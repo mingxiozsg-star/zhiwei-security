@@ -14,27 +14,32 @@ import android.os.Build
  */
 object PanicKill {
 
-    /** 斩杀所有非系统应用，返回斩杀数量 */
+    /** 斩杀所有非系统应用，返回斩杀数量（自身双重豁免，绝不自毁） */
     fun killAllThirdParty(context: Context): Int {
         Prefs.init(context)
-        val pm = context.packageManager
+        val self = context.packageName
         val thirdParty = getThirdPartyPackages(context).filter {
-            it != context.packageName && it !in Prefs.whitelist
+            it != self && it !in Prefs.whitelist
         }
 
         var killed = 0
+        var privileged = false
 
-        // 1. 优先走提权批量强杀（root/Shizuku 一条命令搞定，最快）
+        // 1. 优先走提权逐包强杀（force-stop 会杀光该包全部进程，含前台）
         if (Privilege.isReady) {
-            val cmd = thirdParty.joinToString(";") { "am force-stop $it" }
-            val (code, _) = Privilege.exec(cmd)
-            if (code == 0) killed = thirdParty.size
+            privileged = true
+            for (pkg in thirdParty) {
+                if (pkg == self) continue // 双保险
+                val (code, _) = Privilege.exec("am force-stop $pkg")
+                if (code == 0) killed++
+            }
         }
 
-        // 2. Shizuku 不可用时的降级方案：killBackgroundProcesses（只能杀后台）
-        if (killed == 0) {
+        // 2. 降级/补充：killBackgroundProcesses（无提权时只能清后台缓存进程）
+        if (!privileged) {
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
             thirdParty.forEach { pkg ->
+                if (pkg == self) return@forEach // 双保险
                 try {
                     am.killBackgroundProcesses(pkg)
                     killed++
@@ -43,12 +48,14 @@ object PanicKill {
         }
 
         // 3. 回到桌面，把用户从可能的恶意界面里捞出来
-        context.startActivity(Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_HOME)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        })
+        try {
+            context.startActivity(Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        } catch (e: Exception) { }
 
-        return killed
+        return if (privileged) killed else -killed // 负数表示仅后台清理
     }
 
     /** 斩杀单个应用（前台音量异常等场景） */

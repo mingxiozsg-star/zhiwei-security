@@ -3,6 +3,7 @@ package com.zhiwei.security.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -81,12 +82,20 @@ fun AboutScreen(navController: NavController) {
         ) {
             Spacer(Modifier.height(36.dp))
 
-            // 品牌图标
-            Image(
-                painter = painterResource(R.mipmap.ic_launcher),
-                contentDescription = null,
-                modifier = Modifier.size(84.dp).clip(CircleShape)
-            )
+            // 品牌图标（用矢量前景+品牌色圆底，避免 adaptive-icon 解析崩溃）
+            Box(
+                modifier = Modifier
+                    .size(84.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFF6B9D)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_launcher_foreground),
+                    contentDescription = null,
+                    modifier = Modifier.size(72.dp)
+                )
+            }
             Spacer(Modifier.height(16.dp))
 
             // 品牌英文名（ROAM 风格大字）
@@ -250,7 +259,9 @@ private fun AboutDivider() {
 private fun LinkRow(name: String, url: String) {
     val context = LocalContext.current
     TextButton(onClick = {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        cm.setPrimaryClip(android.content.ClipData.newPlainText(name, url))
+        android.widget.Toast.makeText(context, "链接已复制：$url", android.widget.Toast.LENGTH_SHORT).show()
     }) {
         Text("$name →", color = Color(0xFF7EC8E3), fontSize = 13.sp)
     }
