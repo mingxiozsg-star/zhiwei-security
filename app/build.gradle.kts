@@ -11,8 +11,8 @@ android {
         applicationId = "com.zhiwei.security"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -31,6 +31,13 @@ android {
     }
 
     signingConfigs {
+        // 正式版签名密钥（知微安全自有）
+        create("release") {
+            storeFile = file("keystore/release.keystore")
+            storePassword = "zhiwei2026"
+            keyAlias = "zhiwei"
+            keyPassword = "zhiwei2026"
+        }
         // AOSP 公开 platform testkey（仅对 userdebug/testkey 签名的系统有效）
         create("platform") {
             storeFile = file("keystore/platform.keystore")
@@ -46,6 +53,7 @@ android {
         create("normal") {
             dimension = "privilege"
             versionNameSuffix = ""
+            signingConfig = signingConfigs.getByName("release")
         }
         // 系统版：sharedUserId=android.uid.system + platform testkey 签名
         // 只能在 testkey 签名的系统（userdebug/模拟器/部分工程机）上安装

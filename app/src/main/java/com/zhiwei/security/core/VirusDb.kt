@@ -16,6 +16,14 @@ object VirusDb {
         "com.lock.virus",
         "com.screen.locker",
         "com.ransomware.lock",
+        // 社区样本库收录（用户实采，2026-10-25）
+        "com.com.xiaoshannb.lock",   // 锁机（安装后无法卸载）
+        "com.com.system.update",     // 伪装系统更新·锁机
+        "com.system.update",         // 伪装系统更新·需4种高权限
+        "com.com.system.service",    // 伪装系统服务·隐藏图标·打开支付/金融应用
+        "com.com.TSLtrHFJNAkxw",     // 无权限直接锁机
+        "com.C000000",               // 「死死」黑屏+删除杀毒软件
+        "com.uxklwljtx.xsoldp.sjjid", // 「谷」浏览器病毒·劫持摄像头/扬声器
         // 远控木马（C2/RAT，公开分析报告样本）
         "Glasgow.pl.dimensional",   // SpyNote RAT（短信钓鱼传播，C2 37.120.141.140:7775，SHA256 bad77dca...）
         "ahmyth.mine.king.ahmyth",  // AhMyth RAT 默认包名
