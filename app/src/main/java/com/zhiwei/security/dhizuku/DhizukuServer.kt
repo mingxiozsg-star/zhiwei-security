@@ -44,7 +44,7 @@ object DhizukuServer {
     const val SERVER_VERSION_NAME = "zhiwei-dhizuku-1.0"
 
     private val lockTaskListeners = CopyOnWriteArrayList<IDhizukuLockTaskModeListener>()
-    private val delegatedScopes = ConcurrentHashMap<String, Array<String>>()
+    private val delegatedScopes = ConcurrentHashMap<String, Array<out String>>()
     private val userServices = ConcurrentHashMap<String, android.app.Service>()
 
     @Volatile var context: Context? = null
@@ -53,11 +53,9 @@ object DhizukuServer {
 
     fun notifyOwnerStateChanged() { }
 
-    fun dispatchLockTaskMode(entering: Boolean) {
+    fun dispatchLockTaskMode(entering: Boolean, pkg: String = "") {
         for (l in lockTaskListeners) {
-            try {
-                if (entering) l.onLockTaskModeEntering() else l.onLockTaskModeExiting()
-            } catch (e: Throwable) { }
+            try { l.onLockTaskModeChanged(entering, pkg) } catch (e: Throwable) { }
         }
     }
 
@@ -172,11 +170,11 @@ object DhizukuServer {
         override fun unbindUserService(bundle: Bundle?) {
             bundle ?: return
             bundle.setClassLoader(ComponentName::class.java.classLoader)
-            val component: ComponentName? = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            val component: ComponentName = (if (android.os.Build.VERSION.SDK_INT >= 33) {
                 bundle.getParcelable(DhizukuVariables.PARAM_COMPONENT, ComponentName::class.java)
             } else {
                 @Suppress("DEPRECATION") bundle.getParcelable(DhizukuVariables.PARAM_COMPONENT)
-            } ?: return
+            }) ?: return
             userServices.remove(component.flattenToString())?.let { svc ->
                 try { svc.onUnbind(Intent().setComponent(component)) } catch (e: Throwable) { }
                 try { svc.onDestroy() } catch (e: Throwable) { }
@@ -187,7 +185,7 @@ object DhizukuServer {
             unbindUserService(bundle)
         }
 
-        override fun getDelegatedScopes(packageName: String?): Array<String> {
+        override fun getDelegatedScopes(packageName: String?): Array<out String> {
             requireGranted()
             return delegatedScopes[packageName] ?: arrayOf()
         }
@@ -195,7 +193,7 @@ object DhizukuServer {
         override fun setDelegatedScopes(packageName: String?, scopes: Array<out String>?) {
             requireGranted()
             if (packageName != null) {
-                delegatedScopes[packageName] = scopes?.let { it.copyOf() } ?: arrayOf()
+                delegatedScopes[packageName] = scopes ?: arrayOf()
             }
         }
 
@@ -219,9 +217,8 @@ object DhizukuServer {
         init {
             // 客户端写 → 进程 stdin
             val stdinPair = ParcelFileDescriptor.createPipe()
-            val stdinRead = ParcelFileDescriptor.open(stdinPair[0].fileDescriptor, ParcelFileDescriptor.MODE_READ_ONLY)
             stdinPfd = stdinPair[1]
-            pump(stdinRead, proc.outputStream)
+            pump(stdinPair[0], proc.outputStream)
             // 进程 stdout → 客户端读
             val stdoutPair = ParcelFileDescriptor.createPipe()
             stdoutPfd = stdoutPair[0]
