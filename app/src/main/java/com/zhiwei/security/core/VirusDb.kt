@@ -24,6 +24,18 @@ object VirusDb {
         "com.com.TSLtrHFJNAkxw",     // 无权限直接锁机
         "com.C000000",               // 「死死」黑屏+删除杀毒软件
         "com.uxklwljtx.xsoldp.sjjid", // 「谷」浏览器病毒·劫持摄像头/扬声器
+        // 社区病毒库实采样本（第二批，包名完整显示才收录）
+        "com.klshijie.cs",           // 广告木马·含恐怖元素
+        "com.com.sssp",              // 陌阳外挂（防封号）·设备管理器病毒
+        "com.com.synb666",           // 寻光公益容器
+        "com.n.v.m",                 // 斯大林病毒·悬浮窗加强锁机
+        "com.agssjaajahsjsjj",       // 一键root
+        "com.com.servers.ozzbzk",    // System·伪装系统服务
+        "com.com.wuyu.lock",         // 我的世界制裁盒子·锁机
+        "com.lxh.com",               // 无障碍锁机
+        "com.ghrsak",                // AK注入器
+        "com.9178",                  // 龙卷锁机生成器 / Runaway
+        "com.kskbl",                 // 黑客开户最新版
         // 远控木马（C2/RAT，公开分析报告样本）
         "Glasgow.pl.dimensional",   // SpyNote RAT（短信钓鱼传播，C2 37.120.141.140:7775，SHA256 bad77dca...）
         "ahmyth.mine.king.ahmyth",  // AhMyth RAT 默认包名
@@ -151,7 +163,9 @@ object VirusDb {
 
     /** 恶意落地文件名（锁机主体释放到 /system/app 的 APK 名） */
     val maliciousFileNames = setOf(
-        "AntSpa.apk" // 锁机主体（释放到 /system/app，chattr +i 防删除）
+        "AntSpa.apk", // 锁机主体（释放到 /system/app，chattr +i 防删除）
+        "My horror Android 13-1.0-1.apk", // My 恐怖病毒
+        "My horror Android 000.apk"       // My 恐怖病毒变体
     )
 
     // 已知恶意签名 MD5（真实样本持续补充）
