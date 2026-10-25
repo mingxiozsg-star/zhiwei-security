@@ -120,7 +120,7 @@ object AdbShell {
             t.join(1000)
             p.exitValue() to out.toString().trim()
         } catch (e: Throwable) {
-            Log.w(TAG, "exec failed: ${args.joinToString(\" \")}", e)
+            Log.w(TAG, "exec failed: ${args.joinToString(" ")}", e)
             -1 to (e.message ?: "执行失败")
         }
     }

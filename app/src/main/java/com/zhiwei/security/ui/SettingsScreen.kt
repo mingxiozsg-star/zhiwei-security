@@ -175,7 +175,7 @@ fun SettingsScreen(navController: NavController) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text("本机 ADB 自提权", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
                             Text(
-                                if (AdbShell.isConnected) "已连接 ${AdbShell.connectedDevice ?: \"\"}"
+                                if (AdbShell.isConnected) "已连接 ${AdbShell.connectedDevice ?: ""}"
                                 else "未连接 · 开启无线调试后在此配对",
                                 fontSize = 13.sp, color = Color(0xFF9090A0)
                             )
