@@ -21,11 +21,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.zhiwei.security.core.AdbShell
 import com.zhiwei.security.core.DhizukuManager
+import com.zhiwei.security.core.PermissionRevoker
 import com.zhiwei.security.core.Prefs
+import com.zhiwei.security.core.Privilege
 import com.zhiwei.security.core.ShizukuManager
 import com.zhiwei.security.core.VirusDb
 import com.zhiwei.security.service.NetGuardService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -41,6 +47,11 @@ fun SettingsScreen(navController: NavController) {
     var installScan by remember { mutableStateOf(Prefs.installScanEnabled) }
     var netGuard by remember { mutableStateOf(Prefs.netGuardEnabled) }
     var hideRecents by remember { mutableStateOf(Prefs.hideRecentsEnabled) }
+    var abuseDetect by remember { mutableStateOf(Prefs.abuseDetectEnabled) }
+    var autoRevoke by remember { mutableStateOf(Prefs.autoRevokeEnabled) }
+    var revokeStatus by remember { mutableStateOf("") }
+    var showAdbDialog by remember { mutableStateOf(false) }
+    var adbRefresh by remember { mutableStateOf(0) } // 触发状态重组
 
     // VPN 授权请求
     val vpnLauncher = rememberLauncherForActivityResult(
@@ -51,6 +62,17 @@ fun SettingsScreen(navController: NavController) {
             netGuard = true
             NetGuardService.start(context)
         }
+    }
+
+    // ADB 状态刷新（adbRefresh 变化或进入页面时后台探测一次）
+    LaunchedEffect(adbRefresh) {
+        withContext(Dispatchers.IO) {
+            try { AdbShell.refreshStatus() } catch (e: Throwable) { }
+        }
+    }
+
+    if (showAdbDialog) {
+        AdbActivationDialog(onDismiss = { showAdbDialog = false; adbRefresh++ })
     }
 
     Scaffold(
@@ -88,6 +110,12 @@ fun SettingsScreen(navController: NavController) {
             }
             SwitchItem("无障碍霸占管控", "检测霸屏锁机行为，自动斩杀并吊销其无障碍权限", a11yGuard) {
                 a11yGuard = it; Prefs.a11yGuardEnabled = it
+            }
+            SwitchItem("越权行为检测", "监控冻结/删除系统应用等高危操作，自动恢复并斩杀嫌疑应用", abuseDetect) {
+                abuseDetect = it; Prefs.abuseDetectEnabled = it
+            }
+            SwitchItem("系统权限自动收回", "新装应用的危险权限自动收回（权限白名单豁免）", autoRevoke) {
+                autoRevoke = it; Prefs.autoRevokeEnabled = it
             }
             SwitchItem("安装后自动扫描", "新应用安装完成后立即进行风险分析", installScan) {
                 installScan = it; Prefs.installScanEnabled = it
@@ -127,6 +155,38 @@ fun SettingsScreen(navController: NavController) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
+                            Text("当前提权状态", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                            Text(Privilege.statusText, fontSize = 13.sp, color = Color(0xFF7EC8E3))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("系统级提权（android.uid.system）", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                            Text(
+                                if (Privilege.isSystemUid) "已生效：当前运行于系统 uid"
+                                else "未生效：需安装 system 渠道包（testkey 签名的系统可用）",
+                                fontSize = 13.sp, color = Color(0xFF9090A0)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("本机 ADB 自提权", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                            Text(
+                                if (AdbShell.isConnected) "已连接 ${AdbShell.connectedDevice ?: \"\"}"
+                                else "未连接 · 开启无线调试后在此配对",
+                                fontSize = 13.sp, color = Color(0xFF9090A0)
+                            )
+                        }
+                        TextButton(onClick = { showAdbDialog = true }) {
+                            Text(if (AdbShell.isConnected) "重新连接" else "激活", color = Color(0xFFFF6B9D))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("Shizuku", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
                             Text(ShizukuManager.statusText, fontSize = 13.sp, color = Color(0xFF9090A0))
                         }
@@ -143,9 +203,57 @@ fun SettingsScreen(navController: NavController) {
                             Text(DhizukuManager.statusText(context), fontSize = 13.sp, color = Color(0xFF9090A0))
                         }
                         if (DhizukuManager.isInstalled(context)) {
-                            TextButton(onClick = { DhizukuManager.openDhizuku(context) }) {
-                                Text("打开", color = Color(0xFFFF6B9D))
+                            TextButton(onClick = {
+                                if (DhizukuManager.isReady(context)) {
+                                    DhizukuManager.openDhizuku(context)
+                                } else {
+                                    DhizukuManager.requestPermission { adbRefresh++ }
+                                }
+                            }) {
+                                Text(if (DhizukuManager.isReady(context)) "打开" else "授权", color = Color(0xFFFF6B9D))
                             }
+                        }
+                    }
+                }
+            }
+
+            // ===== 通用 =====
+            SectionTitle("权限管控")
+
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("危险权限收回", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("收回全部非白名单应用的短信/通讯录/录音/定位等危险权限（需提权通道）",
+                        fontSize = 13.sp, color = Color(0xFF9090A0))
+                    if (revokeStatus.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(revokeStatus, fontSize = 12.sp, color = Color(0xFF7EC8E3))
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row {
+                        TextButton(onClick = { navController.navigate("permissions") }) {
+                            Text("权限设置 →", color = Color(0xFF7EC8E3), fontSize = 15.sp)
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        TextButton(
+                            enabled = Privilege.isReady,
+                            onClick = {
+                                revokeStatus = "正在收回…"
+                                kotlin.concurrent.thread {
+                                    var done = 0; var total = 0
+                                    try {
+                                        done = PermissionRevoker.revokeAll(context) { d, t, _ -> total = t }
+                                    } catch (e: Throwable) { }
+                                    revokeStatus = "完成：从 $total 个应用收回 $done 项危险权限"
+                                }
+                            }
+                        ) {
+                            Text("立即收回", color = Color(0xFFFF6B9D), fontSize = 15.sp)
                         }
                     }
                 }
@@ -246,4 +354,86 @@ private fun StatRow(label: String, value: String) {
         Text(label, fontSize = 14.sp, color = Color(0xFF9090A0))
         Text(value, fontSize = 14.sp, color = Color.White)
     }
+}
+
+/**
+ * 本机 ADB 自提权激活对话框（LADB 方案）
+ * 步骤：设置 → 开发者选项 → 无线调试 → 使用配对码配对设备（拿 IP:配对端口+配对码）
+ *      回到无线调试首页拿 IP:连接端口
+ */
+@Composable
+private fun AdbActivationDialog(onDismiss: () -> Unit) {
+    var ip by remember { mutableStateOf(Prefs.adbHost.ifEmpty { "127.0.0.1" }) }
+    var pairPort by remember { mutableStateOf("") }
+    var pairCode by remember { mutableStateOf("") }
+    var connectPort by remember { mutableStateOf(if (Prefs.adbPort > 0) Prefs.adbPort.toString() else "") }
+    var log by remember { mutableStateOf("1. 打开「无线调试」→「使用配对码配对设备」\n2. 填入 IP / 配对端口 / 配对码，点「配对」\n3. 回到无线调试首页，看「IP 地址和端口」，填入连接端口，点「连接」") }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        containerColor = Color(0xFF1A1A2E),
+        title = { Text("本机 ADB 自提权", color = Color.White, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text(log, fontSize = 12.sp, color = Color(0xFF9090A0))
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = ip, onValueChange = { ip = it },
+                    label = { Text("IP 地址") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = pairPort, onValueChange = { pairPort = it.filter { c -> c.isDigit() } },
+                    label = { Text("配对端口（配对弹窗里）") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = pairCode, onValueChange = { pairCode = it.filter { c -> c.isDigit() } },
+                    label = { Text("配对码（6位）") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = connectPort, onValueChange = { connectPort = it.filter { c -> c.isDigit() } },
+                    label = { Text("连接端口（无线调试首页）") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Row {
+                TextButton(
+                    enabled = !busy && pairPort.isNotEmpty() && pairCode.isNotEmpty(),
+                    onClick = {
+                        busy = true
+                        scope.launch {
+                            val (ok, out) = withContext(Dispatchers.IO) {
+                                AdbShell.pair(ip, pairPort.toIntOrNull() ?: 0, pairCode)
+                            }
+                            log = if (ok) "✅ 配对成功，继续点「连接」" else "❌ 配对失败：$out"
+                            busy = false
+                        }
+                    }
+                ) { Text("配对") }
+                TextButton(
+                    enabled = !busy && connectPort.isNotEmpty(),
+                    onClick = {
+                        busy = true
+                        scope.launch {
+                            val (ok, out) = withContext(Dispatchers.IO) {
+                                AdbShell.connect(ip, connectPort.toIntOrNull() ?: 0)
+                            }
+                            log = if (ok) "✅ 已连接，提权通道就绪" else "❌ 连接失败：$out"
+                            busy = false
+                            if (ok) onDismiss()
+                        }
+                    }
+                ) { Text("连接") }
+            }
+        },
+        dismissButton = {
+            TextButton(enabled = !busy, onClick = onDismiss) { Text("关闭") }
+        }
+    )
 }

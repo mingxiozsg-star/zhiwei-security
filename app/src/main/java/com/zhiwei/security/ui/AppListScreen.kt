@@ -43,6 +43,7 @@ data class AppInfo(
     val isSystem: Boolean,
     val isBlacklist: Boolean,
     val isWhitelist: Boolean,
+    val isPermWhitelist: Boolean,
     val riskScore: Int,
     val versionName: String?
 )
@@ -172,6 +173,16 @@ fun AppListScreen(navController: NavController) {
                                     apps = loadInstalledApps(context)
                                 }
                             },
+                            onTogglePermWhitelist = {
+                                scope.launch {
+                                    if (app.isPermWhitelist) {
+                                        Prefs.removeFromPermWhitelist(app.packageName)
+                                    } else {
+                                        Prefs.addToPermWhitelist(app.packageName)
+                                    }
+                                    apps = loadInstalledApps(context)
+                                }
+                            },
                             onUninstall = {
                                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                                     data = Uri.parse("package:${app.packageName}")
@@ -192,6 +203,7 @@ fun AppListItem(
     app: AppInfo,
     onToggleBlacklist: () -> Unit,
     onToggleWhitelist: () -> Unit,
+    onTogglePermWhitelist: () -> Unit,
     onUninstall: () -> Unit
 ) {
     Card(
@@ -259,6 +271,14 @@ fun AppListItem(
                     fontSize = 16.sp
                 )
             }
+
+            // 权限白名单标记
+            IconButton(onClick = onTogglePermWhitelist, modifier = Modifier.size(36.dp)) {
+                Text(
+                    if (app.isPermWhitelist) "🛡️" else "🔓",
+                    fontSize = 14.sp
+                )
+            }
         }
     }
 }
@@ -283,6 +303,7 @@ private suspend fun loadInstalledApps(context: Context): List<AppInfo> = withCon
             isSystem = isSystem,
             isBlacklist = appInfo.packageName in Prefs.blacklist,
             isWhitelist = appInfo.packageName in Prefs.whitelist,
+            isPermWhitelist = appInfo.packageName in Prefs.permWhitelist,
             riskScore = 0,
             versionName = try {
                 pm.getPackageInfo(appInfo.packageName, 0).versionName

@@ -24,10 +24,10 @@ object PanicKill {
 
         var killed = 0
 
-        // 1. 优先走 Shizuku 批量强杀（一条命令搞定，最快）
-        if (ShizukuManager.isReady) {
+        // 1. 优先走提权批量强杀（root/Shizuku 一条命令搞定，最快）
+        if (Privilege.isReady) {
             val cmd = thirdParty.joinToString(";") { "am force-stop $it" }
-            val (code, _) = ShizukuManager.exec(cmd)
+            val (code, _) = Privilege.exec(cmd)
             if (code == 0) killed = thirdParty.size
         }
 
@@ -56,8 +56,8 @@ object PanicKill {
         if (pkg == context.packageName) return false
         if (pkg in Prefs.whitelist) return false
         if (isSystemApp(context, pkg)) return false
-        return if (ShizukuManager.isReady) {
-            ShizukuManager.forceStop(pkg)
+        return if (Privilege.isReady) {
+            Privilege.forceStop(pkg)
         } else {
             try {
                 val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager

@@ -11,7 +11,7 @@ import android.widget.Toast
 import com.zhiwei.security.core.AppScanner
 import com.zhiwei.security.core.PanicKill
 import com.zhiwei.security.core.Prefs
-import com.zhiwei.security.core.ShizukuManager
+import com.zhiwei.security.core.Privilege
 import kotlin.concurrent.thread
 
 /**
@@ -190,7 +190,7 @@ class ZhiweiAccessibilityService : AccessibilityService() {
                 risk.level == com.zhiwei.security.core.VirusDb.ThreatLevel.VIRUS) {
                 thread {
                     // 吊销其无障碍权限
-                    if (ShizukuManager.isReady) {
+                    if (Privilege.isReady) {
                         revokeA11yFor(pkg)
                     }
                     val ok = PanicKill.killOne(this, pkg)
@@ -215,7 +215,7 @@ class ZhiweiAccessibilityService : AccessibilityService() {
         ) ?: return
         val kept = enabled.split(":").filter { !it.startsWith("$pkg/") }
         val newValue = kept.joinToString(":")
-        ShizukuManager.exec(
+        Privilege.exec(
             "settings put secure enabled_accessibility_services '$newValue'"
         )
     }

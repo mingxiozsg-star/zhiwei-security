@@ -19,6 +19,7 @@ import com.zhiwei.security.service.GuardService3
 import com.zhiwei.security.service.ProtectService
 import com.zhiwei.security.ui.*
 import com.zhiwei.security.ui.theme.ZhiweiSecurityTheme
+import kotlin.concurrent.thread
 
 class MainActivity : ComponentActivity() {
 
@@ -26,6 +27,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         Prefs.init(this)
+
+        // 后台线程尝试恢复本机 ADB 提权通道
+        thread(start = true, isDaemon = true) {
+            try { com.zhiwei.security.core.AdbShell.autoReconnect() } catch (e: Throwable) { }
+        }
 
         setContent {
             ZhiweiSecurityTheme {

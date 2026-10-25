@@ -91,6 +91,26 @@ class AppScanner(private val context: Context) {
             )
         }
 
+        // 1.2 恶意包名前缀（锁机载体随机后缀变体）
+        val hitPrefix = VirusDb.maliciousPackagePrefixes.firstOrNull { pkg.packageName.startsWith(it) }
+        if (hitPrefix != null) {
+            return VirusDb.ScanResult(
+                pkg.packageName, appName, VirusDb.ThreatLevel.VIRUS,
+                95, listOf("包名命中恶意前缀「$hitPrefix」（锁机载体变体）"), permissions, false,
+                pkg.versionName, pkg.applicationInfo?.sourceDir
+            )
+        }
+
+        // 1.3 恶意落地文件名（锁机主体释放在系统目录的 APK 名）
+        val srcFile = pkg.applicationInfo?.sourceDir?.substringAfterLast('/') ?: ""
+        if (srcFile in VirusDb.maliciousFileNames) {
+            return VirusDb.ScanResult(
+                pkg.packageName, appName, VirusDb.ThreatLevel.VIRUS,
+                100, listOf("APK 文件名命中恶意名单「$srcFile」（锁机主体典型落地名）"), permissions, isSystem,
+                pkg.versionName, pkg.applicationInfo?.sourceDir
+            )
+        }
+
         // 2. 恶意签名
         if (checkMaliciousSignature(pkg)) {
             return VirusDb.ScanResult(
@@ -100,8 +120,32 @@ class AppScanner(private val context: Context) {
             )
         }
 
+        // 2.5 恶意应用名关键词（刷钻/锁机/外挂类名称，正常应用不会用）
+        if (!isSystem) {
+            val hitKw = VirusDb.maliciousNameKeywords.firstOrNull { appName.contains(it) }
+            if (hitKw != null) {
+                return VirusDb.ScanResult(
+                    pkg.packageName, appName, VirusDb.ThreatLevel.VIRUS,
+                    95, listOf("应用名命中恶意关键词「$hitKw」（锁机病毒典型传播名称）"),
+                    permissions, false, pkg.versionName, pkg.applicationInfo?.sourceDir
+                )
+            }
+        }
+
         // 3. 系统应用到此为止——不再按权限评分，避免误报
         if (isSystem) return null
+
+        // 3.2 风险应用名单（广告/猎手木马家族，判 HIGH 不判 VIRUS）
+        if (pkg.packageName in VirusDb.suspiciousPackages) {
+            return VirusDb.ScanResult(
+                pkg.packageName, appName, VirusDb.ThreatLevel.HIGH,
+                60, listOf("命中风险应用名单（广告木马/猎手家族，捆绑恶意 SDK）"),
+                permissions, false, pkg.versionName, pkg.applicationInfo?.sourceDir
+            )
+        }
+
+        // 3.5 权限白名单：不参与权限评分
+        if (pkg.packageName in Prefs.permWhitelist) return null
 
         // 4. 第三方应用：权限评分
         val grantedDangerous = permissions.filter { it in VirusDb.dangerousPermissions }

@@ -21,6 +21,8 @@ class ZhiweiApp : Application() {
         instance = this
         com.zhiwei.security.core.Prefs.init(this)
         com.zhiwei.security.core.ShizukuManager.init()
+        com.zhiwei.security.core.AdbShell.init(this)
+        com.zhiwei.security.core.Privilege.warmup()
         createNotificationChannels()
     }
 

@@ -29,6 +29,32 @@ android {
             )
         }
     }
+
+    signingConfigs {
+        // AOSP 公开 platform testkey（仅对 userdebug/testkey 签名的系统有效）
+        create("platform") {
+            storeFile = file("keystore/platform.keystore")
+            storePassword = "android"
+            keyAlias = "platform"
+            keyPassword = "android"
+        }
+    }
+
+    flavorDimensions += "privilege"
+    productFlavors {
+        // 普通版：可安装在任何设备
+        create("normal") {
+            dimension = "privilege"
+            versionNameSuffix = ""
+        }
+        // 系统版：sharedUserId=android.uid.system + platform testkey 签名
+        // 只能在 testkey 签名的系统（userdebug/模拟器/部分工程机）上安装
+        create("system") {
+            dimension = "privilege"
+            versionNameSuffix = "-system"
+            signingConfig = signingConfigs.getByName("platform")
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -39,6 +65,9 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        jniLibs {
+useLegacyPackaging = true // adb 二进制需真实解压到 nativeLibraryDir
         }
     }
 }

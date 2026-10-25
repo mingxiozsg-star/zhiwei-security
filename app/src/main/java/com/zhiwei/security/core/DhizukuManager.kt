@@ -1,21 +1,35 @@
 package com.zhiwei.security.core
 
 import android.content.Context
+import android.content.Intent
+import android.os.ServiceManager
 import android.util.Log
+import com.rosan.dhizuku.api.Dhizuku
+import com.rosan.dhizuku.api.DhizukuRequestPermissionListener
 
 /**
- * Dhizuku 管理器（反射接入，不引入编译期依赖）
+ * Dhizuku 管理器（内置官方 Dhizuku-API 源码，直接调用）
  *
  * Dhizuku 是「设备所有者(DeviceOwner)权限共享」框架：
- * 用户安装 Dhizuku 并把它设为 DeviceOwner 后，其他应用可通过其 API
- * 调用 DevicePolicyManager 的特权能力（冻结应用、静默卸载、权限授予等）。
- *
- * 本类全部用反射调用，装了 Dhizuku 应用即可用，没装也不影响编译和运行。
+ * 用户安装 Dhizuku 应用并把它设为 DeviceOwner 后，本应用可通过其 API
+ * 借道系统服务的隐藏 binder 调用 DeviceOwner 特权能力（冻结应用等）。
  */
 object DhizukuManager {
 
     private const val TAG = "DhizukuManager"
     private const val DHIZUKU_PKG = "com.rosan.dhizuku"
+
+    private var inited = false
+
+    fun init(context: Context) {
+        if (inited) return
+        if (!isInstalled(context)) return
+        try {
+            inited = Dhizuku.init(context.applicationContext)
+        } catch (e: Throwable) {
+            Log.w(TAG, "Dhizuku init failed", e)
+        }
+    }
 
     /** Dhizuku 应用是否已安装 */
     fun isInstalled(context: Context): Boolean {
@@ -28,15 +42,28 @@ object DhizukuManager {
     /** Dhizuku binder 是否可用且已授权 */
     fun isReady(context: Context): Boolean {
         if (!isInstalled(context)) return false
+        init(context)
+        if (!inited) return false
         return try {
-            val clazz = Class.forName("com.rosan.dhizuku.api.Dhizuku")
-            val init = clazz.getMethod("init", Context::class.java)
-            init.invoke(null, context.applicationContext)
-            val check = clazz.getMethod("checkSelfPermission")
-            (check.invoke(null) as Int) == 0 // PackageManager.PERMISSION_GRANTED
+            Dhizuku.isPermissionGranted()
         } catch (e: Throwable) {
             Log.w(TAG, "Dhizuku check failed", e)
             false
+        }
+    }
+
+    /** 向 Dhizuku 请求授权（异步回调） */
+    fun requestPermission(onResult: (Boolean) -> Unit) {
+        if (!inited) { onResult(false); return }
+        try {
+            Dhizuku.requestPermission(object : DhizukuRequestPermissionListener() {
+                override fun onRequestPermission(grant: Int) {
+                    onResult(grant == 0) // PackageManager.PERMISSION_GRANTED
+                }
+            })
+        } catch (e: Throwable) {
+            Log.w(TAG, "requestPermission failed", e)
+            onResult(false)
         }
     }
 
@@ -48,27 +75,30 @@ object DhizukuManager {
     }
 
     /**
-     * 通过 Dhizuku 的 DeviceOwner 能力执行设备管理操作
-     * （冻结/解冻应用：setApplicationHidden 需要 DeviceOwner）
+     * 冻结/解冻应用（DeviceOwner 能力）
+     * 经 Dhizuku 包装 device_policy binder，反射调用 setApplicationHidden
+     * （反射适配各 Android 版本的方法签名差异）
      */
     fun setAppFrozen(context: Context, pkg: String, frozen: Boolean): Boolean {
         if (!isReady(context)) return false
         return try {
-            // 通过 Dhizuku 拿到 DevicePolicyManager 的远程 binder 调用
-            val clazz = Class.forName("com.rosan.dhizuku.api.Dhizuku")
-            val getDPM = clazz.getMethod("getDevicePolicyManager")
-            val dpm = getDPM.invoke(null)
-            val dpmClass = dpm.javaClass
-            val method = dpmClass.getMethod(
-                "setApplicationHidden",
-                android.content.ComponentName::class.java,
-                String::class.java,
-                Boolean::class.java
-            )
-            // DeviceOwner 的 ComponentName 属于 Dhizuku 自己
-            val adminField = clazz.getMethod("getAdminComponent")
-            val admin = adminField.invoke(null) as android.content.ComponentName
-            method.invoke(dpm, admin, pkg, frozen) as Boolean
+            val raw = ServiceManager.getService(Context.DEVICE_POLICY_SERVICE)
+                ?: return false
+            val wrapped = Dhizuku.binderWrapper(raw)
+            val stubClass = Class.forName("android.app.admin.IDevicePolicyManager\$Stub")
+            val dpm = stubClass.getMethod("asInterface", android.os.IBinder::class.java)
+                .invoke(null, wrapped) ?: return false
+            val admin = Dhizuku.getOwnerComponent()
+            // 按参数个数匹配签名（不同 Android 版本有 3/5 参版本）
+            val method = dpm.javaClass.methods.firstOrNull {
+                it.name == "setApplicationHidden"
+            } ?: return false
+            val args: Array<Any?> = when (method.parameterCount) {
+                3 -> arrayOf(admin, pkg, frozen)
+                5 -> arrayOf(admin, pkg, frozen, 0, false)
+                else -> return false
+            }
+            (method.invoke(dpm, *args) as? Boolean) == true
         } catch (e: Throwable) {
             Log.w(TAG, "setAppFrozen failed", e)
             false
@@ -80,7 +110,7 @@ object DhizukuManager {
         try {
             context.startActivity(
                 context.packageManager.getLaunchIntentForPackage(DHIZUKU_PKG)?.apply {
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
             )
         } catch (e: Exception) { }

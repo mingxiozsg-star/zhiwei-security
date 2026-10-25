@@ -22,8 +22,12 @@ import com.zhiwei.security.MainActivity
 import com.zhiwei.security.R
 import com.zhiwei.security.ZhiweiApp
 import com.zhiwei.security.core.AppScanner
+import com.zhiwei.security.core.BehaviorGuard
+import com.zhiwei.security.core.PermissionRevoker
+import android.util.Log
+import kotlin.concurrent.thread
 import com.zhiwei.security.core.Prefs
-import com.zhiwei.security.core.ShizukuManager
+import com.zhiwei.security.core.Privilege
 import com.zhiwei.security.core.VirusDb
 import com.zhiwei.security.ui.ShieldWarnActivity
 
@@ -49,14 +53,45 @@ class ProtectService : Service() {
 
     private val foregroundWatcher = object : Runnable {
         override fun run() {
+            renewWakeLockIfNeeded()
             checkForegroundApp()
+            checkAbuseTick++
+            if (checkAbuseTick >= ABUSE_CHECK_EVERY_TICKS) {
+                checkAbuseTick = 0
+                runAbuseCheck()
+            }
             handler.postDelayed(this, WATCH_INTERVAL)
+        }
+    }
+
+    // ========== 越权行为检测 ==========
+
+    private var checkAbuseTick = 0
+
+    private fun runAbuseCheck() {
+        if (!Prefs.abuseDetectEnabled) return
+        thread {
+            try {
+                BehaviorGuard.check(this, getForegroundPackage()) { violation, suspect ->
+                    val restoredTip = if (violation.restored) "，已自动恢复" else "，恢复失败（无提权通道）"
+                    val suspectTip = suspect?.let { "；嫌疑应用：$it" } ?: ""
+                    showThreatWarning(
+                        suspect ?: violation.pkg,
+                        "越权行为：系统组件 ${violation.pkg} ${violation.type.label}$restoredTip$suspectTip"
+                    )
+                    // 嫌疑应用直接斩杀
+                    if (suspect != null && Privilege.isReady) {
+                        Privilege.forceStop(suspect)
+                    }
+                }
+            } catch (e: Throwable) { }
         }
     }
 
     companion object {
         private const val WATCH_INTERVAL = 2_000L // 2 秒轮询前台
         private const val BLOCK_COOLDOWN = 8_000L // 同一应用 8 秒内不重复警告
+        private const val ABUSE_CHECK_EVERY_TICKS = 15 // 每 30 秒做一次系统完整性检查
         private const val NOTIFICATION_ID = 1001
         var isRunning = false
             private set
@@ -112,7 +147,7 @@ class ProtectService : Service() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        val shizukuState = if (ShizukuManager.isReady) "Shizuku 已连接" else "Shizuku 未连接"
+        val shizukuState = Privilege.statusText
         return NotificationCompat.Builder(this, ZhiweiApp.CHANNEL_PROTECT)
             .setContentTitle("知微安全守护中")
             .setContentText("前台监控运行中 · $shizukuState")
@@ -132,6 +167,13 @@ class ProtectService : Service() {
 
     private fun releaseWakeLock() {
         wakeLock?.let { if (it.isHeld) it.release() }
+    }
+
+    /** WakeLock 10 分钟会过期，轮询时发现失效就续期，防止 CPU 休眠导致监控停摆 */
+    private fun renewWakeLockIfNeeded() {
+        try {
+            if (wakeLock?.isHeld != true) acquireWakeLock()
+        } catch (e: Exception) { }
     }
 
     // ========== 核心：前台应用监控 ==========
@@ -168,7 +210,8 @@ class ProtectService : Service() {
         if (foreground == packageName) return // 自己不管
 
         val shouldBlock = foreground !in Prefs.whitelist &&
-                (foreground in Prefs.blacklist || foreground in VirusDb.maliciousPackages)
+                (foreground in Prefs.blacklist || foreground in VirusDb.maliciousPackages ||
+                        VirusDb.maliciousPackagePrefixes.any { foreground.startsWith(it) })
         if (!shouldBlock) return
 
         // 冷却时间内不重复处理
@@ -177,15 +220,15 @@ class ProtectService : Service() {
         lastBlockedPkg = foreground
         lastBlockedAt = now
 
-        // 1. 立刻强杀（需要 Shizuku）
-        val killed = if (ShizukuManager.isReady) {
-            ShizukuManager.forceStop(foreground)
+        // 1. 立刻强杀（root/Shizuku 提权）
+        val killed = if (Privilege.isReady) {
+            Privilege.forceStop(foreground)
         } else false
 
         // 2. 弹出全屏警告（盖住恶意应用界面）
         showThreatWarning(
             foreground,
-            if (killed) "黑名单应用已被强制停止" else "检测到黑名单应用进入前台（开启 Shizuku 可自动强杀）"
+            if (killed) "黑名单应用已被强制停止" else "检测到黑名单应用进入前台（开启 Root/Shizuku 可自动强杀）"
         )
     }
 
@@ -239,6 +282,13 @@ class ProtectService : Service() {
     private fun checkNewApp(pkg: String) {
         if (!Prefs.installScanEnabled) return
         if (pkg in Prefs.whitelist) return
+        // 系统权限自动收回（新装应用）
+        thread {
+            try {
+                val n = PermissionRevoker.autoRevokeForNewApp(this, pkg)
+                if (n > 0) Log.i("ProtectService", "已自动收回 $pkg 的 $n 项危险权限")
+            } catch (e: Throwable) { }
+        }
         val result = scanner.analyzePackageName(pkg) ?: return
         if (result.level == VirusDb.ThreatLevel.HIGH || result.level == VirusDb.ThreatLevel.VIRUS) {
             showThreatWarning(
@@ -286,6 +336,8 @@ class ProtectService : Service() {
             .setContentText("$appName: $reason")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pi)
+            // Android 10+ 后台 startActivity 受限，全屏意图通知是合规的弹出方式
+            .setFullScreenIntent(pi, true)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -294,6 +346,7 @@ class ProtectService : Service() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         nm.notify(pkg.hashCode(), notification)
 
-        startActivity(warnIntent)
+        // 兜底：能弹就直接弹（被系统限制时静默失败，全屏通知已覆盖）
+        try { startActivity(warnIntent) } catch (e: Exception) { }
     }
 }

@@ -88,6 +88,32 @@ object Prefs {
         get() = sp.getStringSet("net_blocked", emptySet()) ?: emptySet()
         set(v) = sp.edit().putStringSet("net_blocked", v).apply()
 
+    // ADB 自提权连接信息
+    var adbHost: String
+        get() = sp.getString("adb_host", "") ?: ""
+        set(v) = sp.edit().putString("adb_host", v).apply()
+    var adbPort: Int
+        get() = sp.getInt("adb_port", 0)
+        set(v) = sp.edit().putInt("adb_port", v).apply()
+
+    /** 越权行为检测（冻结系统应用/删除系统应用等） */
+    var abuseDetectEnabled: Boolean
+        get() = sp.getBoolean("sw_abuse_detect", true)
+        set(v) = sp.edit().putBoolean("sw_abuse_detect", v).apply()
+
+    /** 系统权限自动收回（收回非白名单应用的危险权限） */
+    var autoRevokeEnabled: Boolean
+        get() = sp.getBoolean("sw_auto_revoke", false)
+        set(v) = sp.edit().putBoolean("sw_auto_revoke", v).apply()
+
+    /** 权限白名单（这些应用不参与权限风险评分，也不会被自动收回权限） */
+    var permWhitelist: Set<String>
+        get() = sp.getStringSet("perm_whitelist", emptySet()) ?: emptySet()
+        set(v) = sp.edit().putStringSet("perm_whitelist", v).apply()
+
+    fun addToPermWhitelist(pkg: String) { permWhitelist = permWhitelist + pkg }
+    fun removeFromPermWhitelist(pkg: String) { permWhitelist = permWhitelist - pkg }
+
     fun addToNetBlocked(pkg: String) { netBlocked = netBlocked + pkg }
     fun removeFromNetBlocked(pkg: String) { netBlocked = netBlocked - pkg }
 
