@@ -133,6 +133,39 @@
             android:enabled="true"
             android:exported="false" />
 
+        <!-- 知微特权服务（对第三方应用开放，Shizuku 式授权架构） -->
+        <service
+            android:name=".service.ZhiweiApiService"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.zhiwei.security.api.BIND" />
+            </intent-filter>
+        </service>
+
+        <!-- 特权服务发现入口（第三方应用 contentResolver.call 拿 Binder） -->
+        <provider
+            android:name=".provider.ZhiweiProvider"
+            android:authorities="com.zhiwei.security.provider"
+            android:enabled="true"
+            android:exported="true" />
+
+        <!-- 第三方授权申请弹窗 -->
+        <activity
+            android:name=".ui.AuthGrantActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- 危险命令拦截弹窗 -->
+        <activity
+            android:name=".ui.CommandConfirmActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- 病毒警告 -->
         <activity
             android:name=".ui.ShieldWarnActivity"

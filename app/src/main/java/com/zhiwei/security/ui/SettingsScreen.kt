@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.zhiwei.security.core.AdbPairing
 import com.zhiwei.security.core.AdbShell
+import com.zhiwei.security.core.AuthDb
 import com.zhiwei.security.core.DhizukuManager
 import com.zhiwei.security.core.PermissionRevoker
 import com.zhiwei.security.core.Prefs
@@ -106,7 +107,7 @@ fun SettingsScreen(navController: NavController) {
             SwitchItem("前台应用拦截", "黑名单/恶意应用进入前台时自动强杀并警告", intercept) {
                 intercept = it; Prefs.interceptEnabled = it
             }
-            SwitchItem("音量键管控", "音量上键三连击斩杀全部第三方应用；检测软件恶意拉满音量", volumeGuard) {
+            SwitchItem("音量键管控", "狂按音量键 3 次以上（上/下皆可，2 秒内）斩杀全部第三方应用；检测软件恶意拉满音量", volumeGuard) {
                 volumeGuard = it; Prefs.volumeGuardEnabled = it
             }
             SwitchItem("无障碍霸占管控", "检测霸屏锁机行为，自动斩杀并吊销其无障碍权限", a11yGuard) {
@@ -212,6 +213,95 @@ fun SettingsScreen(navController: NavController) {
                                 }
                             }) {
                                 Text(if (DhizukuManager.isReady(context)) "打开" else "授权", color = Color(0xFFFF6B9D))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ===== 授权管理（知微特权服务） =====
+            SectionTitle("授权管理")
+
+            var cmdIntercept by remember { mutableStateOf(AuthDb.cmdInterceptEnabled) }
+            var grantedApps by remember { mutableStateOf(AuthDb.grantedApps.toList()) }
+            var cmdWhitelist by remember { mutableStateOf(AuthDb.cmdWhitelist.toList()) }
+
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("知微特权服务", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("其他应用可申请授权，通过知微的提权通道执行命令（Shizuku 式架构）",
+                        fontSize = 13.sp, color = Color(0xFF9090A0))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SwitchItem("危险命令拦截", "已授权应用执行危险命令时弹窗确认（允许一次/不允许/加入白名单）；普通命令不拦截", cmdIntercept) {
+                        cmdIntercept = it; AuthDb.cmdInterceptEnabled = it
+                    }
+                }
+            }
+
+            // 已授权应用列表
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("已授权应用（${grantedApps.size}）", fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium, color = Color.White)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (grantedApps.isEmpty()) {
+                        Text("暂无应用获得授权", fontSize = 13.sp, color = Color(0xFF9090A0))
+                    } else {
+                        grantedApps.forEach { pkg ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    val label = try {
+                                        context.packageManager.getApplicationLabel(
+                                            context.packageManager.getApplicationInfo(pkg, 0)).toString()
+                                    } catch (e: Exception) { pkg }
+                                    Text(label, fontSize = 14.sp, color = Color.White)
+                                    Text(pkg, fontSize = 12.sp, color = Color(0xFF9090A0))
+                                }
+                                TextButton(onClick = {
+                                    AuthDb.revoke(pkg)
+                                    grantedApps = AuthDb.grantedApps.toList()
+                                    cmdWhitelist = AuthDb.cmdWhitelist.toList()
+                                }) { Text("撤销", color = Color(0xFFFF6B6B), fontSize = 14.sp) }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 命令白名单
+            if (cmdWhitelist.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("命令白名单（${cmdWhitelist.size}）", fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium, color = Color.White)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        cmdWhitelist.forEach { entry ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(entry.replace("|", " → "), fontSize = 12.sp,
+                                    color = Color(0xFF9CCC65), modifier = Modifier.weight(1f))
+                                TextButton(onClick = {
+                                    AuthDb.removeCmdWhitelist(entry)
+                                    cmdWhitelist = AuthDb.cmdWhitelist.toList()
+                                }) { Text("删除", color = Color(0xFFFF6B6B), fontSize = 13.sp) }
                             }
                         }
                     }

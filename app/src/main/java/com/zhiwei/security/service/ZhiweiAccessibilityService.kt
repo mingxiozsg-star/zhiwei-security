@@ -28,9 +28,9 @@ class ZhiweiAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var audioManager: AudioManager
 
-    // 音量键三连击计数
-    private var volUpCount = 0
-    private var lastVolUpAt = 0L
+    // 音量键狂按计数（上/下键都算，2 秒内 ≥3 次触发）
+    private var volKeyCount = 0
+    private var lastVolKeyAt = 0L
 
     // 音量监控
     private var lastMusicVolume = -1
@@ -51,7 +51,8 @@ class ZhiweiAccessibilityService : AccessibilityService() {
     }
 
     companion object {
-        private const val TRIPLE_PRESS_WINDOW = 1_500L
+        private const val RAPID_PRESS_WINDOW = 2_000L  // 狂按窗口：2 秒
+        private const val RAPID_PRESS_COUNT = 3        // 按 3 次及以上触发
         private const val KEY_EVENT_GRACE = 2_000L      // 按键后 2 秒内的音量变化算用户操作
         private const val HIJACK_NO_INPUT_TIMEOUT = 15_000L // 15 秒无任何用户输入
     }
@@ -70,7 +71,7 @@ class ZhiweiAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
-    // ========== 1. 音量键监听（三连击斩杀） ==========
+    // ========== 1. 音量键监听（狂按 3 次以上斩杀，上/下键都算） ==========
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (!Prefs.volumeGuardEnabled) return super.onKeyEvent(event)
@@ -78,23 +79,24 @@ class ZhiweiAccessibilityService : AccessibilityService() {
         if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
             event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
             if (event.action == KeyEvent.ACTION_DOWN) {
-                lastKeyEventAt = System.currentTimeMillis()
-                lastUserInteractionAt = lastKeyEventAt
+                val now = System.currentTimeMillis()
+                lastKeyEventAt = now
+                lastUserInteractionAt = now
 
-                if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-                    val now = System.currentTimeMillis()
-                    if (now - lastVolUpAt > TRIPLE_PRESS_WINDOW) volUpCount = 0
-                    lastVolUpAt = now
-                    volUpCount++
-                    if (volUpCount >= 3) {
-                        volUpCount = 0
-                        triggerPanicKill()
-                        return true // 吞掉这次按键，防止音量变化
-                    }
-                } else {
-                    volUpCount = 0
+                // 超出狂按窗口重新计数
+                if (now - lastVolKeyAt > RAPID_PRESS_WINDOW) volKeyCount = 0
+                lastVolKeyAt = now
+                volKeyCount++
+
+                if (volKeyCount >= RAPID_PRESS_COUNT) {
+                    volKeyCount = 0
+                    triggerPanicKill()
+                    return true // 吞掉这次按键，防止音量变化
                 }
             }
+        } else {
+            // 其他键按下会打断狂按节奏
+            if (event.action == KeyEvent.ACTION_DOWN) volKeyCount = 0
         }
         // 不拦截正常音量键功能
         return super.onKeyEvent(event)
