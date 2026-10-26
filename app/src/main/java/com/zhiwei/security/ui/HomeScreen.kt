@@ -167,15 +167,17 @@ fun HomeScreen(navController: NavController) {
                     Text("授权后解锁强杀/卸载/权限收回等全部能力", fontSize = 11.sp, color = TextGray)
                     Spacer(modifier = Modifier.height(10.dp))
                     @Suppress("UNUSED_EXPRESSION") authRefresh
+                    var authMsg by remember { mutableStateOf("") }
+                    var authBusy by remember { mutableStateOf(false) }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         // Shizuku
                         val shizukuOk = ShizukuManager.isReady
                         Card(
                             onClick = {
                                 when {
-                                    ShizukuManager.isBinderAlive && !shizukuOk ->
-                                        ShizukuManager.requestPermission { authRefresh++ }
-                                    else -> try { navController.navigate("privilege") } catch (t: Throwable) { }
+                                    shizukuOk -> authMsg = "Shizuku 已授权，无需操作"
+                                    ShizukuManager.isBinderAlive -> ShizukuManager.requestPermission { authRefresh++ }
+                                    else -> authMsg = "Shizuku 未运行：它是独立特权进程，任何应用都无法内嵌；本机 ADB 通道（uid 2000 shell）能力与之完全等价，在提权中心一键连接即可"
                                 }
                             },
                             modifier = Modifier.weight(1f),
@@ -186,7 +188,7 @@ fun HomeScreen(navController: NavController) {
                                 Text("🔐 Shizuku", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.White)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    if (shizukuOk) "✅ 已授权" else if (ShizukuManager.isBinderAlive) "点击授权" else "未运行 · 点查看",
+                                    if (shizukuOk) "✅ 已授权" else if (ShizukuManager.isBinderAlive) "点击授权" else "未运行 · 点说明",
                                     fontSize = 11.sp,
                                     color = if (shizukuOk) Color(0xFF9CCC65) else Ice
                                 )
@@ -196,14 +198,24 @@ fun HomeScreen(navController: NavController) {
                         val ownerOk = ZhiweiDAReceiver.isDeviceOwner(context)
                         Card(
                             onClick = {
-                                if (!ownerOk && Privilege.isReady) {
-                                    scope.launch {
-                                        withContext(Dispatchers.IO) {
-                                            Privilege.exec("dpm set-device-owner com.zhiwei.security/.dhizuku.ZhiweiDAReceiver")
+                                when {
+                                    ownerOk -> authMsg = "Dhizuku 设备所有者已激活，无需操作"
+                                    authBusy -> { }
+                                    Privilege.isReady -> {
+                                        authBusy = true
+                                        authMsg = "正在激活设备所有者…"
+                                        scope.launch {
+                                            val r = withContext(Dispatchers.IO) {
+                                                Privilege.exec("dpm set-device-owner com.zhiwei.security/.dhizuku.ZhiweiDAReceiver")
+                                            }
+                                            authMsg = if (r.first == 0) "✅ 设备所有者激活成功"
+                                                else "❌ 激活失败：${r.second.take(80)}（设备已有账号时需先在系统设置移除账号）"
+                                            authBusy = false
+                                            authRefresh++
                                         }
-                                        authRefresh++
                                     }
-                                } else try { navController.navigate("privilege") } catch (t: Throwable) { }
+                                    else -> authMsg = "需先连接提权通道（本机 ADB / Root）后才能激活"
+                                }
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp),
@@ -213,12 +225,16 @@ fun HomeScreen(navController: NavController) {
                                 Text("👑 Dhizuku", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.White)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    if (ownerOk) "✅ 已激活" else if (Privilege.isReady) "一键激活" else "需提权 · 点查看",
+                                    if (ownerOk) "✅ 已激活" else if (authBusy) "激活中…" else if (Privilege.isReady) "一键激活" else "需提权 · 点说明",
                                     fontSize = 11.sp,
                                     color = if (ownerOk) Color(0xFF9CCC65) else Pink
                                 )
                             }
                         }
+                    }
+                    if (authMsg.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(authMsg, fontSize = 11.sp, color = Ice, lineHeight = 15.sp)
                     }
                 }
             }
