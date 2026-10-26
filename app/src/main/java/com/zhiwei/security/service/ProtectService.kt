@@ -196,7 +196,7 @@ private var wakeLock: PowerManager.WakeLock? = null
                     it != packageName && it !in Prefs.whitelist &&
                         !com.zhiwei.security.core.PanicKill.isSystemApp(this, it)
                 }
-                val msg = "目录 ${hit.first} 1 分钟内新增 ${hit.value - (prev[hit.first] ?: 0)} 个文件" +
+                val msg = "目录 ${hit.key} 1 分钟内新增 ${hit.value - (prev[hit.key] ?: 0)} 个文件" +
                     (suspect?.let { "；嫌疑应用：$it" } ?: "")
                 NotifHelper.alert(this, "📁 检测到文件洪泛攻击", msg)
                 showThreatWarning(suspect ?: "未知应用", "持续创建垃圾文件撑爆存储：$msg")
