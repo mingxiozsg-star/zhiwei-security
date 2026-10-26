@@ -172,9 +172,11 @@ fun HomeScreen(navController: NavController) {
                         val shizukuOk = ShizukuManager.isReady
                         Card(
                             onClick = {
-                                if (ShizukuManager.isBinderAlive && !shizukuOk) {
-                                    ShizukuManager.requestPermission { authRefresh++ }
-                                } else navController.navigate("privilege")
+                                when {
+                                    ShizukuManager.isBinderAlive && !shizukuOk ->
+                                        ShizukuManager.requestPermission { authRefresh++ }
+                                    else -> try { navController.navigate("privilege") } catch (t: Throwable) { }
+                                }
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp),
@@ -201,7 +203,7 @@ fun HomeScreen(navController: NavController) {
                                         }
                                         authRefresh++
                                     }
-                                } else navController.navigate("privilege")
+                                } else try { navController.navigate("privilege") } catch (t: Throwable) { }
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp),

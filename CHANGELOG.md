@@ -1,5 +1,19 @@
 # 更新日志
 
+## v1.5.2（2026-10-27）
+
+### 第六轮循环审查修复（图标重绘 + 授权入口收编应用内）
+- **全新图标**：原盾牌+对勾重绘为「猫耳竖瞳盾牌」（顶部双尖耳+粉/冰蓝双色竖瞳猫眼+猫嘴弧线+星芒点缀），贴合知微品牌形象
+- **修复主页授权卡"点不开"**：Shizuku/Dhizuku 卡片在未就绪态点击仅导航且导航异常被静默吞掉 → 导航调用全部加异常保护，任何状态下点击必有响应
+- **收编外部跳转**：PrivilegeScreen「Dhizuku（外部，兼容）」卡的"打开"按钮曾跳外部 Dhizuku App → 已删除，改为纯状态展示+未授权时才出现"授权"按钮（应用内弹窗）；`DhizukuManager.openDhizuku` 死代码连带清除。澄清：Dhizuku 服务端本就内嵌在本应用（第三方客户端连我们），Shizuku 服务端架构上为独立特权进程无法内嵌，但本机 ADB 通道（shell uid 2000）能力与之等价且纯应用内完成
+- **停用旧首启授权引导页**：PermissionScreen 不再作为 startDestination 自动弹出（通知权限已由 MainActivity 启动时系统弹窗申请，提权授权在主页卡片/提权页完成），冷启动直进主页
+
+## v1.5.1（2026-10-26）
+
+### 第五轮循环审查修复（新模块线程安全 + 内存安全）
+- **修复 Compose SnapshotState 后台线程直写崩溃风险**：SecurityJournal.entries / LocalAvScannerManager.lastMatches / CloudHashVerifier.verdicts / Privilege.levelState 四个状态曾被扫描/告警后台协程直接写入，密集触发时随机崩溃 → 全部改 SecurityJournal.runOnMain 主线程投递
+- **修复 extractStrings 内存上限缺陷**：原只限单个 ZIP entry 大小，恶意构造多 entry 包可耗尽内存 → 改为全包 8MB 总量预算
+
 ## v1.5.0（2026-10-26）
 
 ### 全量代码审计修复

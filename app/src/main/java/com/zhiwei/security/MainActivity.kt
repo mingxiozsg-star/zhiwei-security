@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    val startDest = if (Prefs.onboardingDone) "home" else "permissions"
+                    val startDest = "home" // 旧首启授权引导页已停用：通知权限改由启动时系统弹窗申请，提权授权在主页卡片/提权页完成
                     NavHost(navController = navController, startDestination = startDest) {
                         composable("home") { HomeScreen(navController) }
                         composable("scan") { ScanScreen(navController) }

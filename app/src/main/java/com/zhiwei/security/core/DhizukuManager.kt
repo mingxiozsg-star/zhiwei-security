@@ -1,7 +1,6 @@
 package com.zhiwei.security.core
 
 import android.content.Context
-import android.content.Intent
 import android.os.ServiceManager
 import android.util.Log
 import com.rosan.dhizuku.api.Dhizuku
@@ -103,16 +102,5 @@ object DhizukuManager {
             Log.w(TAG, "setAppFrozen failed", e)
             false
         }
-    }
-
-    /** 打开 Dhizuku 应用（引导用户授权） */
-    fun openDhizuku(context: Context) {
-        try {
-            context.startActivity(
-                context.packageManager.getLaunchIntentForPackage(DHIZUKU_PKG)?.apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            )
-        } catch (e: Exception) { }
     }
 }

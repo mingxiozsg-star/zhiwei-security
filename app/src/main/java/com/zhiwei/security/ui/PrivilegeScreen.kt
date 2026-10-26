@@ -195,15 +195,13 @@ fun PrivilegeScreen(navController: NavController) {
             ) {
                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Dhizuku（外部，兼容）", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                        Text("Dhizuku 客户端（外部，兼容）", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
                         Text(DhizukuManager.statusText(context), fontSize = 13.sp, color = Color(0xFF9090A0))
+                        Text("仅用于兼容第三方 Dhizuku 客户端接入；本应用全部能力均在应用内完成，无需打开外部应用。", fontSize = 11.sp, color = Color(0xFF707088), lineHeight = 15.sp)
                     }
-                    if (DhizukuManager.isInstalled(context)) {
-                        TextButton(onClick = {
-                            if (DhizukuManager.isReady(context)) DhizukuManager.openDhizuku(context)
-                            else DhizukuManager.requestPermission { refresh++ }
-                        }) {
-                            Text(if (DhizukuManager.isReady(context)) "打开" else "授权", color = Color(0xFFFF6B9D))
+                    if (DhizukuManager.isInstalled(context) && !DhizukuManager.isReady(context)) {
+                        TextButton(onClick = { DhizukuManager.requestPermission { refresh++ } }) {
+                            Text("授权", color = Color(0xFFFF6B9D))
                         }
                     }
                 }
