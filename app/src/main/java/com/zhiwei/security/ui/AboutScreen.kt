@@ -55,6 +55,64 @@ fun AboutScreen(navController: NavController) {
     var checking by remember { mutableStateOf(false) }
     var downloadProgress by remember { mutableStateOf(-1) }
     var pendingInstall by remember { mutableStateOf<java.io.File?>(null) }
+    var newRelease by remember { mutableStateOf<UpdateChecker.ReleaseInfo?>(null) }
+
+    // ===== 新版本弹窗：显示版本号 + 更新说明 =====
+    val release = newRelease
+    if (release != null) {
+        AlertDialog(
+            onDismissRequest = { if (!checking) newRelease = null },
+            containerColor = Color(0xFF1A1A2E),
+            title = {
+                Text("发现新版本 ${release.tag}", color = Color.White, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text("当前版本：v$versionName", color = Color(0xFF9090A0), fontSize = 13.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text("更新说明：", color = Color(0xFFFF6B9D), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        release.changelog.ifBlank { "（该版本未提供更新说明）" },
+                        color = Color(0xFFCCCCDD), fontSize = 13.sp, lineHeight = 19.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        newRelease = null
+                        val url = release.apkUrl
+                        if (url == null) {
+                            updateState = "该版本无下载地址"
+                            return@Button
+                        }
+                        checking = true
+                        updateState = "正在下载 ${release.tag}…"
+                        scope.launch {
+                            val file = withContext(Dispatchers.IO) {
+                                UpdateChecker.download(context, url) { p -> downloadProgress = p }
+                            }
+                            downloadProgress = -1
+                            checking = false
+                            if (file != null) {
+                                pendingInstall = file
+                                updateState = "${release.tag} 下载完成，点击安装"
+                            } else {
+                                updateState = "下载失败，请稍后重试"
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6B9D))
+                ) { Text("立即更新", color = Color.White) }
+            },
+            dismissButton = {
+                TextButton(onClick = { newRelease = null }) {
+                    Text("暂不", color = Color(0xFF9090A0))
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -131,25 +189,10 @@ fun AboutScreen(navController: NavController) {
                             checking = false
                             return@launch
                         }
-                        // 有新版本 → 应用内下载
-                        updateState = "发现新版本 ${info.tag}，正在下载…"
-                        val url = info.apkUrl
-                        if (url == null) {
-                            updateState = "发现新版本 ${info.tag}，但无下载地址"
-                            checking = false
-                            return@launch
-                        }
-                        val file = withContext(Dispatchers.IO) {
-                            UpdateChecker.download(context, url) { p -> downloadProgress = p }
-                        }
-                        downloadProgress = -1
+                        // 有新版本 → 先弹窗展示版本号+更新说明，用户确认后再下载
+                        updateState = "发现新版本 ${info.tag}"
+                        newRelease = info
                         checking = false
-                        if (file != null) {
-                            pendingInstall = file
-                            updateState = "${info.tag} 下载完成，点击安装"
-                        } else {
-                            updateState = "下载失败，请稍后重试"
-                        }
                     }
                 },
                 shape = RoundedCornerShape(50),

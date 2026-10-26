@@ -22,6 +22,7 @@ import com.zhiwei.security.MainActivity
 import com.zhiwei.security.R
 import com.zhiwei.security.ZhiweiApp
 import com.zhiwei.security.core.AppScanner
+import com.zhiwei.security.core.NotifHelper
 import com.zhiwei.security.core.BehaviorGuard
 import com.zhiwei.security.core.PermissionRevoker
 import android.util.Log
@@ -73,6 +74,7 @@ private var wakeLock: PowerManager.WakeLock? = null
                                         else "已清理 ${-killed} 个第三方应用后台进程（前台应用需激活提权通道才能强杀）"
                                     android.widget.Toast.makeText(this@ProtectService,
                                         msg, android.widget.Toast.LENGTH_LONG).show()
+                                    NotifHelper.notify(this@ProtectService, "🚨 紧急斩杀完成", msg)
                                 }
                             }
                         }
@@ -322,6 +324,28 @@ private var wakeLock: PowerManager.WakeLock? = null
     private fun checkNewApp(pkg: String) {
         if (!Prefs.installScanEnabled) return
         if (pkg in Prefs.whitelist) return
+
+        // ===== 静默安装检测：读取安装来源 =====
+        val installer = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                packageManager.getInstallSourceInfo(pkg).installingPackageName
+            } else {
+                @Suppress("DEPRECATION") packageManager.getInstallerPackageName(pkg)
+            }
+        } catch (e: Throwable) { null }
+        val appLabel = try {
+            packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+        } catch (e: Throwable) { pkg }
+        // installer 为空或 com.android.shell = 未经应用商店的静默/ADB 侧载安装
+        val silent = installer == null || installer == "com.android.shell"
+        NotifHelper.alert(
+            this,
+            if (silent) "⚠️ 检测到静默安装" else "📦 检测到新应用安装",
+            "应用：$appLabel（$pkg）\n安装来源：" + (installer ?: "未知/ADB 侧载") +
+                if (silent) "\n该应用未经应用商店安装，请确认是否为你本人操作" else "",
+            packageManager.getLaunchIntentForPackage(packageName)
+        )
+
         // 系统权限自动收回（新装应用）
         thread {
             try {
@@ -330,7 +354,35 @@ private var wakeLock: PowerManager.WakeLock? = null
             } catch (e: Throwable) { }
         }
         val result = scanner.analyzePackageName(pkg) ?: return
-        if (result.level == VirusDb.ThreatLevel.HIGH || result.level == VirusDb.ThreatLevel.VIRUS) {
+
+        // ===== 病毒命中：直接删除（提权通道），失败则弹卸载 =====
+        if (result.level == VirusDb.ThreatLevel.VIRUS) {
+            thread {
+                var removed = false
+                if (Privilege.isReady) {
+                    try {
+                        val r = Privilege.exec("pm uninstall $pkg")
+                        removed = r.first == 0 && !r.second.contains("Failure", true)
+                    } catch (e: Throwable) { }
+                }
+                if (removed) {
+                    NotifHelper.alert(this, "🦠 病毒应用已自动删除",
+                        "$appLabel（$pkg）命中病毒库「${result.reasons.firstOrNull() ?: ""}」，已通过提权通道直接卸载")
+                } else {
+                    // 无提权 → 通知点击跳系统卸载页
+                    val uninstall = Intent(Intent.ACTION_DELETE).apply {
+                        data = android.net.Uri.parse("package:$pkg")
+                    }
+                    NotifHelper.alert(this, "🦠 检测到病毒应用",
+                        "$appLabel（$pkg）命中病毒库，点击此通知立即卸载",
+                        uninstall)
+                    showThreatWarning(pkg, "检测到病毒应用：${result.reasons.firstOrNull() ?: "命中病毒库"}")
+                }
+            }
+            return
+        }
+
+        if (result.level == VirusDb.ThreatLevel.HIGH) {
             showThreatWarning(
                 pkg,
                 "新安装应用存在风险：${result.reasons.firstOrNull() ?: "权限异常"}（评分 ${result.score}）"

@@ -79,6 +79,7 @@ fun AppListScreen(navController: NavController) {
     }
 
     Scaffold(
+        containerColor = Color(0xFF0F0F1A),
         topBar = {
             TopAppBar(
                 title = { Text("应用管理", fontWeight = FontWeight.Bold) },
@@ -86,7 +87,11 @@ fun AppListScreen(navController: NavController) {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF0F0F1A), titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         }
     ) { padding ->
@@ -104,7 +109,13 @@ fun AppListScreen(navController: NavController) {
                 placeholder = { Text("搜索应用...") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color(0xFF1A1A2E),
+                    unfocusedContainerColor = Color(0xFF1A1A2E),
+                    focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color(0xFFFF6B9D), unfocusedBorderColor = Color(0xFF2A2A3E)
+                )
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -143,7 +154,7 @@ fun AppListScreen(navController: NavController) {
                     CircularProgressIndicator()
                 }
             } else {
-                Text("${filteredApps.size} 个应用", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${filteredApps.size} 个应用", fontSize = 13.sp, color = Color(0xFF9090A0))
                 Spacer(modifier = Modifier.height(8.dp))
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -211,9 +222,9 @@ fun AppListItem(
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
-                app.isBlacklist -> Color(0xFFF44336).copy(alpha = 0.08f)
-                app.isWhitelist -> Color(0xFF4CAF50).copy(alpha = 0.08f)
-                else -> MaterialTheme.colorScheme.surfaceVariant
+                app.isBlacklist -> Color(0xFFF44336).copy(alpha = 0.12f)
+                app.isWhitelist -> Color(0xFF4CAF50).copy(alpha = 0.12f)
+                else -> Color(0xFF1A1A2E)
             }
         )
     ) {
@@ -237,7 +248,7 @@ fun AppListItem(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                    .background(Color(0xFFFF6B9D).copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text("📱", fontSize = 20.sp)
@@ -247,13 +258,13 @@ fun AppListItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(app.appName, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    Text(app.appName, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.White)
                     if (app.isSystem) {
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("系统", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("系统", fontSize = 10.sp, color = Color(0xFF9090A0))
                     }
                 }
-                Text(app.packageName, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(app.packageName, fontSize = 11.sp, color = Color(0xFF9090A0))
             }
 
             // 黑名单标记

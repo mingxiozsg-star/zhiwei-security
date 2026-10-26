@@ -208,6 +208,31 @@ fun PrivilegeScreen(navController: NavController) {
                     }
                 }
             }
+
+            // 全机型兼容指南
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("📖 全机型激活指南", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "【Dhizuku 设备所有者】要求设备无已登录账号，各厂商移除路径：\n" +
+                        "· 小米/红米：设置 → 小米账号 → 退出登录\n" +
+                        "· 华为/荣耀：设置 → 华为账号 → 退出账号\n" +
+                        "· OPPO/一加：设置 → 欢太账号 → 退出\n" +
+                        "· vivo/iQOO：设置 → vivo 账号 → 退出登录\n" +
+                        "· 三星：设置 → 账户与备份 → 移除三星/Google 账户\n" +
+                        "· 其他：设置 → 账号/用户与账户 → 移除全部账户\n\n" +
+                        "【本机 ADB / Shizuku】Android 11+ 开启「无线调试」：\n" +
+                        "设置 → 开发者选项 → 无线调试 → 使用配对码配对 → 在本应用弹窗输入 6 位配对码\n\n" +
+                        "【优先级】知微自动按 Root > 系统签名 > 本机 ADB > Shizuku 选择可用通道，任一就绪即可强杀/卸载。",
+                        fontSize = 12.sp, color = Color(0xFF9090A0), lineHeight = 18.sp
+                    )
+                }
+            }
         }
     }
 }

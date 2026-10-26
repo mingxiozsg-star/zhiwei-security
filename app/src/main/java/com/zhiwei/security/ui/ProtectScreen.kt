@@ -28,6 +28,7 @@ fun ProtectScreen(navController: NavController) {
     var guardOn by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = Color(0xFF0F0F1A),
         topBar = {
             TopAppBar(
                 title = { Text("防护设置", fontWeight = FontWeight.Bold) },
@@ -35,7 +36,11 @@ fun ProtectScreen(navController: NavController) {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF0F0F1A), titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         }
     ) { padding ->
@@ -53,9 +58,9 @@ fun ProtectScreen(navController: NavController) {
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = if (protectOn)
-                        Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        Color(0xFF4CAF50).copy(alpha = 0.12f)
                     else
-                        MaterialTheme.colorScheme.surfaceVariant
+                        Color(0xFF1A1A2E)
                 )
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
@@ -65,8 +70,8 @@ fun ProtectScreen(navController: NavController) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("防锁机守护", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("实时监控并拦截恶意锁机行为", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("防锁机守护", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                            Text("实时监控并拦截恶意锁机行为", fontSize = 13.sp, color = Color(0xFF9090A0))
                         }
                         Switch(
                             checked = protectOn,
@@ -105,10 +110,10 @@ fun ProtectScreen(navController: NavController) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("服务状态", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("服务状态", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                     Spacer(modifier = Modifier.height(12.dp))
                     StatusRow("防护服务", ProtectService.isRunning)
                     StatusRow("守护进程", GuardService.isRunning)
@@ -122,10 +127,10 @@ fun ProtectScreen(navController: NavController) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("防护说明", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("防护说明", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "防锁机守护会持续监控设备状态：\n\n" +
@@ -135,7 +140,7 @@ fun ProtectScreen(navController: NavController) {
                         "• 守护进程与主服务互相监视，防止被杀\n" +
                         "• 发现威胁时立即弹出警告并通知",
                         fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = Color(0xFF9090A0),
                         lineHeight = 20.sp
                     )
                 }
@@ -152,7 +157,7 @@ fun StatusRow(label: String, active: Boolean) {
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, fontSize = 14.sp)
+        Text(label, fontSize = 14.sp, color = Color.White)
         Text(
             text = if (active) "运行中" else "已停止",
             color = if (active) Color(0xFF4CAF50) else Color(0xFFF44336),

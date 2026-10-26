@@ -38,6 +38,7 @@ fun ScanScreen(navController: NavController) {
     var scanComplete by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = Color(0xFF0F0F1A),
         topBar = {
             TopAppBar(
                 title = { Text("病毒扫描", fontWeight = FontWeight.Bold) },
@@ -45,7 +46,11 @@ fun ScanScreen(navController: NavController) {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF0F0F1A), titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         }
     ) { padding ->
@@ -63,8 +68,8 @@ fun ScanScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("正在扫描: $currentApp", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("$progress / $totalApps", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("正在扫描: $currentApp", fontSize = 14.sp, color = Color(0xFF9090A0))
+                Text("$progress / $totalApps", fontSize = 13.sp, color = Color(0xFF9090A0))
                 Spacer(modifier = Modifier.height(24.dp))
 
                 if (threats.isNotEmpty()) {
@@ -90,7 +95,7 @@ fun ScanScreen(navController: NavController) {
                             fontSize = 18.sp,
                             color = if (threats.isEmpty()) Color(0xFF4CAF50) else Color(0xFFF44336)
                         )
-                        Text("共扫描 $totalApps 个应用", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("共扫描 $totalApps 个应用", fontSize = 14.sp, color = Color(0xFF9090A0))
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -105,7 +110,7 @@ fun ScanScreen(navController: NavController) {
                 Text(
                     "点击下方按钮开始扫描",
                     modifier = Modifier.align(Alignment.CenterHorizontally),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color(0xFF9090A0)
                 )
                 Spacer(modifier = Modifier.height(32.dp))
             }
@@ -143,6 +148,13 @@ fun ScanScreen(navController: NavController) {
                         threats = result
                         isScanning = false
                         scanComplete = true
+                        // 扫描完成 → 通知栏结果
+                        com.zhiwei.security.core.NotifHelper.notify(
+                            context,
+                            if (result.isEmpty()) "✅ 扫描完成：未发现威胁" else "⚠️ 扫描完成：发现 ${result.size} 个威胁",
+                            "共扫描 $totalApps 个应用" + if (result.isNotEmpty())
+                                "，最高危：${result.first().appName}（评分 ${result.first().score}）" else ""
+                        )
                     }
                 },
                 modifier = Modifier
@@ -150,7 +162,8 @@ fun ScanScreen(navController: NavController) {
                     .height(52.dp)
                     .padding(bottom = 16.dp),
                 shape = RoundedCornerShape(26.dp),
-                enabled = !isScanning
+                enabled = !isScanning,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6B9D), contentColor = Color.White)
             ) {
                 Text(
                     text = if (isScanning) "扫描中..." else "开始扫描",
@@ -168,7 +181,7 @@ fun ThreatCard(threat: VirusDb.ScanResult) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = Color(0xFF1A1A2E)
         )
     ) {
         Row(
@@ -206,8 +219,8 @@ fun ThreatCard(threat: VirusDb.ScanResult) {
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(threat.appName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(threat.packageName, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(threat.appName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                Text(threat.packageName, fontSize = 12.sp, color = Color(0xFF9090A0))
                 if (threat.reasons.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
