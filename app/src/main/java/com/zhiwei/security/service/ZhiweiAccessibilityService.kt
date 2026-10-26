@@ -74,11 +74,21 @@ class ZhiweiAccessibilityService : AccessibilityService() {
     // ========== 1. 音量键监听（狂按 3 次以上斩杀，上/下键都算） ==========
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (!Prefs.volumeGuardEnabled && !Prefs.a11yGuardEnabled) return super.onKeyEvent(event)
+
+        // F1 悬浮窗霸屏检测：返回键连按 ≥3 次且前台纹丝不动 → 疑似被悬浮窗盖住
+        if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN
+            && event.repeatCount == 0 && Prefs.a11yGuardEnabled) {
+            trackBackForOverlayHijack()
+            return super.onKeyEvent(event)
+        }
+
         if (!Prefs.volumeGuardEnabled) return super.onKeyEvent(event)
 
         if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
             event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-            if (event.action == KeyEvent.ACTION_DOWN) {
+            // 长按自动连发（repeatCount>0）不计数——否则长按调音量就误触发斩杀
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                 val now = System.currentTimeMillis()
                 lastKeyEventAt = now
                 lastUserInteractionAt = now
@@ -113,7 +123,7 @@ class ZhiweiAccessibilityService : AccessibilityService() {
             val killed = PanicKill.killAllThirdParty(this)
             val msg = if (killed >= 0) "已斩杀 $killed 个第三方应用（前台+后台全部杀光）"
                 else "已清理 ${-killed} 个第三方应用后台进程（前台应用需激活提权通道才能强杀）"
-            com.zhiwei.security.core.NotifHelper.notify(this, "🚨 紧急斩杀完成", msg)
+            com.zhiwei.security.core.NotifHelper.alert(this, "🚨 紧急斩杀完成", msg)
             handler.post {
                 Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
             }
@@ -141,10 +151,12 @@ class ZhiweiAccessibilityService : AccessibilityService() {
                         !PanicKill.isSystemApp(this, suspect) && suspect !in Prefs.whitelist) {
                         thread {
                             val ok = PanicKill.killOne(this, suspect)
+                            val strong = ok && Privilege.isReady
                             handler.post {
                                 Toast.makeText(this,
-                                    if (ok) "⚠️ $suspect 恶意拉满音量，已斩杀"
-                                    else "⚠️ $suspect 恶意拉满音量（需 Shizuku 才能强杀）",
+                                    if (strong) "⚠️ $suspect 恶意拉满音量，已斩杀"
+                                    else if (ok) "⚠️ $suspect 恶意拉满音量，已清理其后台（强杀需提权）"
+                                    else "⚠️ $suspect 恶意拉满音量（需提权才能处置）",
                                     Toast.LENGTH_LONG).show()
                             }
                         }
@@ -156,8 +168,61 @@ class ZhiweiAccessibilityService : AccessibilityService() {
         }
         lastMusicVolume = current
     }
+// ========== 3. 无障碍霸占检测 ==========
 
-    // ========== 3. 无障碍霸占检测 ==========
+    // F1 悬浮窗霸屏：返回键连按记录
+    private var backPressTimes = LongArray(0)
+    private var overlayHijackCooldownAt = 0L
+
+    /**
+     * 悬浮窗霸屏判定：返回键 3 秒内连按 ≥3 次，前台包却纹丝不动，
+     * 且该应用持有悬浮窗权限（SYSTEM_ALERT_WINDOW）→ 悬浮窗盖住真界面，返回键被吞。
+     * 处置：提权 appops 吊销其悬浮窗权限 + 斩杀。
+     */
+    private fun trackBackForOverlayHijack() {
+        val now = System.currentTimeMillis()
+        lastUserInteractionAt = now
+        backPressTimes = (backPressTimes + now).filter { now - it <= 3_000L }.toLongArray()
+        if (backPressTimes.size < 3) return
+        if (now - overlayHijackCooldownAt < 30_000L) return
+
+        val pkg = foregroundPkg
+        if (pkg.isEmpty() || pkg == packageName) return
+        if (pkg in Prefs.whitelist || PanicKill.isSystemApp(this, pkg)) return
+        if (!hasOverlayPermission(pkg)) return
+
+        overlayHijackCooldownAt = now
+        backPressTimes = LongArray(0)
+        thread {
+            // 吊销悬浮窗权限（真正解除霸屏）+ 斩杀
+            if (Privilege.isReady) {
+                Privilege.exec("appops set $pkg SYSTEM_ALERT_WINDOW deny")
+            }
+            val ok = PanicKill.killOne(this, pkg)
+            val msg = if (ok) "⚠️ $pkg 悬浮窗霸屏（返回键失效），已吊销悬浮窗并斩杀"
+                else "⚠️ $pkg 疑似悬浮窗霸屏，已吊销其悬浮窗权限（强杀需提权）"
+            handler.post { Toast.makeText(this, msg, Toast.LENGTH_LONG).show() }
+            com.zhiwei.security.core.NotifHelper.alert(this, "🪟 悬浮窗霸屏拦截", msg)
+        }
+    }
+
+    /** 检查应用当前是否实际持有悬浮窗权限（AppOps 判定，非仅声明） */
+    private fun hasOverlayPermission(pkg: String): Boolean {
+        return try {
+            val appOps = getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+            val ai = packageManager.getApplicationInfo(pkg, 0)
+            val mode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                appOps.unsafeCheckOpNoThrow(
+                    android.app.AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW, ai.uid, pkg)
+            } else {
+                @Suppress("DEPRECATION")
+                appOps.checkOpNoThrow(
+                    android.app.AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW, ai.uid, pkg)
+            }
+            mode == android.app.AppOpsManager.MODE_ALLOWED
+        } catch (e: Throwable) { false }
+    }
+
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return

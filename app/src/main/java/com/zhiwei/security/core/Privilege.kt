@@ -14,6 +14,7 @@ object Privilege {
     private const val TAG = "Privilege"
 
     enum class Level(val label: String) {
+        DETECTING("检测中"),
         NONE("无提权"),
         SHIZUKU("Shizuku (shell)"),
         ADB("本机 ADB (shell)"),
@@ -27,26 +28,61 @@ object Privilege {
     @Volatile private var rootChecked = false
     @Volatile private var rootAvailable = false
 
+    /**
+     * 可观察提权状态（Compose State，UI 订阅后自动刷新）。
+     * 由后台检测一次性原子发布，杜绝"各通道缓存异步翻转导致状态跳变"。
+     */
+    val levelState = androidx.compose.runtime.mutableStateOf(Level.DETECTING)
+
+    private var watcherStarted = false
+
     /** root 是否可用（读缓存，非阻塞；首次由 warmup 后台检测） */
     val hasRoot: Boolean
         get() {
-            if (!rootChecked) {
-                rootChecked = true
-                // 后台检测，避免主线程执行 su 阻塞（Magisk 弹窗会长时间无返回）
-                kotlin.concurrent.thread(isDaemon = true) {
-                    rootAvailable = checkRoot()
-                }
-            }
+            if (!rootChecked) startDetect()
             return rootAvailable
         }
 
     /** 后台预热提权检测（应用启动时调用一次） */
     fun warmup() {
-        kotlin.concurrent.thread(isDaemon = true) {
-            rootChecked = true
-            rootAvailable = checkRoot()
-            try { AdbShell.refreshStatus() } catch (e: Throwable) { }
+        startDetect()
+        startWatcher()
+    }
+
+    @Synchronized private fun startDetect() {
+        if (rootChecked) return
+        rootChecked = true
+        kotlin.concurrent.thread(isDaemon = true) { detectAndPublish() }
+    }
+
+    /** 后台全量检测并原子发布（root 只在尚未可用时重试，避免反复弹 Magisk） */
+    private fun detectAndPublish() {
+        if (!rootAvailable) rootAvailable = checkRoot()
+        try { AdbShell.refreshStatus() } catch (e: Throwable) { }
+        val lv = when {
+            rootAvailable -> Level.ROOT
+            isSystemUid -> Level.SYSTEM
+            AdbShell.isConnected -> Level.ADB
+            ShizukuManager.isReady -> Level.SHIZUKU
+            else -> Level.NONE
         }
+        levelState.value = lv
+    }
+
+    /** 每 30 秒后台重检一次（ADB 掉线/Shizuku 启停/授权变化可自动跟上） */
+    @Synchronized private fun startWatcher() {
+        if (watcherStarted) return
+        watcherStarted = true
+        kotlin.concurrent.thread(isDaemon = true) {
+            while (true) {
+                try { Thread.sleep(30_000); detectAndPublish() } catch (e: Throwable) { }
+            }
+        }
+    }
+
+    /** 手动触发重检（授权弹窗回调、ADB 连接成功后调用） */
+    fun refresh() {
+        kotlin.concurrent.thread(isDaemon = true) { detectAndPublish() }
     }
 
     private fun checkRoot(): Boolean {
@@ -59,18 +95,12 @@ object Privilege {
         }
     }
 
-    /** 当前最强可用提权等级 */
-    val level: Level
-        get() = when {
-            hasRoot -> Level.ROOT
-            isSystemUid -> Level.SYSTEM
-            AdbShell.isConnected -> Level.ADB
-            ShizukuManager.isReady -> Level.SHIZUKU
-            else -> Level.NONE
-        }
+    /** 当前最强可用提权等级（读 Compose 状态，UI 中读取会自动订阅刷新） */
+    val level: Level get() = levelState.value
 
     val statusText: String
-        get() = when (level) {
+        get() = when (levelState.value) {
+            Level.DETECTING -> "提权通道检测中…"
             Level.ROOT -> "Root 已就绪（uid 0，最高权限）"
             Level.SYSTEM -> "系统级提权已生效（android.uid.system）"
             Level.ADB -> "本机 ADB 已连接（shell 权限）"
@@ -78,7 +108,9 @@ object Privilege {
             Level.NONE -> "无提权通道"
         }
 
-    val isReady: Boolean get() = level != Level.NONE
+    /** 就绪判定（DETECTING 期按无提权处理，避免误放行） */
+    val isReady: Boolean
+        get() = levelState.value.let { it != Level.NONE && it != Level.DETECTING }
 
     /** 执行特权命令，自动选择 root 或 Shizuku，返回 (exitCode, 输出) */
     fun exec(command: String): Pair<Int, String> {
@@ -94,10 +126,10 @@ object Privilege {
                 Log.w(TAG, "root exec failed: $command", e)
             }
         }
-        // 系统 uid：直接执行（uid 1000 自带签名级权限，am/pm 特权命令直接可用）
+        // 系统 uid：经 sh -c 执行（Runtime.exec(String) 不走 shell，分号/重定向/引号全失效）
         if (isSystemUid) {
             try {
-                val p = Runtime.getRuntime().exec(command)
+                val p = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
                 val stdout = BufferedReader(InputStreamReader(p.inputStream)).readText()
                 val stderr = BufferedReader(InputStreamReader(p.errorStream)).readText()
                 val code = p.waitFor()

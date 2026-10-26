@@ -28,6 +28,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         Prefs.init(this)
 
+        // Android 13+ 通知权限：启动时弹系统授权框（声明的 POST_NOTIFICATIONS 需运行时申请，
+        // 否则威胁告警通知发不出来）。只在未授权时申请，用户拒绝后不反复骚扰。
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 42)
+        }
+
         // 后台线程尝试恢复本机 ADB 提权通道
         thread(start = true, isDaemon = true) {
             try { com.zhiwei.security.core.AdbShell.autoReconnect() } catch (e: Throwable) { }

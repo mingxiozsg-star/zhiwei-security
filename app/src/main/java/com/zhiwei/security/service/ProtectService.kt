@@ -47,11 +47,25 @@ private var wakeLock: PowerManager.WakeLock? = null
     private var packageReceiver: BroadcastReceiver? = null
     private lateinit var scanner: AppScanner
 
-    // ===== 音量狂按斩杀（兜底通道，不依赖无障碍，任何 ROM 生效） =====
-    // 原理：用户狂按音量键 → 系统音量值连续变化。2 秒内变化 3 次以上 → 触发斩杀
+    // ===== 音量兜底监控（不依赖无障碍，任何 ROM 生效） =====
+    // 狂按斩杀判定：2 秒内变化 ≥5 次且「上下方向交替」才算狂按——
+    // 长按音量键的自动连发是同向连变，不误触发。
+    // 无障碍服务已启用时本通道让位（三连击由无障碍通道精确判定，避免双重斩杀）。
     private var audioManager: android.media.AudioManager? = null
     private var lastVolValue = -1
     private var volChangeTimes = LongArray(0)
+    private var volChangeDirs = IntArray(0) // +1 升 / -1 降
+    private var volAttackCooldownAt = 0L
+
+    /** 无障碍守护是否已启用（启用则按键三连击由无障碍通道负责） */
+    private fun isA11yEnabled(): Boolean {
+        return try {
+            val enabled = android.provider.Settings.Secure.getString(
+                contentResolver, android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            ) ?: return false
+            enabled.contains("$packageName/")
+        } catch (e: Throwable) { false }
+    }
 
     private val volumeWatcher = object : Runnable {
         override fun run() {
@@ -62,9 +76,22 @@ private var wakeLock: PowerManager.WakeLock? = null
                     val v = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
                     if (lastVolValue >= 0 && v != lastVolValue) {
                         val now = System.currentTimeMillis()
+                        val dir = if (v > lastVolValue) 1 else -1
+
+                        // --- D7 兜底：软件音量攻击（一跳拉满 ≥3 格且到顶，非人类按键节奏） ---
+                        if (v == am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC) &&
+                            v - lastVolValue >= 3 && now - volAttackCooldownAt > 15_000L) {
+                            volAttackCooldownAt = now
+                            handleSoftwareVolumeAttack(am)
+                        }
+
+                        // --- D1 狂按判定：次数 + 方向交替双条件 ---
                         volChangeTimes = (volChangeTimes + now).filter { now - it <= 2_000L }.toLongArray()
-                        if (volChangeTimes.size >= 3) {
+                        volChangeDirs = (volChangeDirs + dir).takeLast(volChangeTimes.size).toIntArray()
+                        val hasBothDirs = volChangeDirs.any { it > 0 } && volChangeDirs.any { it < 0 }
+                        if (volChangeTimes.size >= 5 && hasBothDirs && !isA11yEnabled()) {
                             volChangeTimes = LongArray(0)
+                            volChangeDirs = IntArray(0)
                             android.widget.Toast.makeText(this@ProtectService,
                                 "🚨 知微安全：紧急斩杀已触发", android.widget.Toast.LENGTH_LONG).show()
                             thread {
@@ -74,7 +101,7 @@ private var wakeLock: PowerManager.WakeLock? = null
                                         else "已清理 ${-killed} 个第三方应用后台进程（前台应用需激活提权通道才能强杀）"
                                     android.widget.Toast.makeText(this@ProtectService,
                                         msg, android.widget.Toast.LENGTH_LONG).show()
-                                    NotifHelper.notify(this@ProtectService, "🚨 紧急斩杀完成", msg)
+                                    NotifHelper.alert(this@ProtectService, "🚨 紧急斩杀完成", msg)
                                 }
                             }
                         }
@@ -83,6 +110,23 @@ private var wakeLock: PowerManager.WakeLock? = null
                 }
             } catch (e: Throwable) { }
             handler.postDelayed(this, 300L)
+        }
+    }
+
+    /** 软件音量攻击处置：恢复音量 + 斩杀前台第三方嫌疑应用 */
+    private fun handleSoftwareVolumeAttack(am: android.media.AudioManager) {
+        val max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+        am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, max / 2, 0)
+        val suspect = getForegroundPackage() ?: return
+        if (suspect == packageName || suspect in Prefs.whitelist) return
+        if (com.zhiwei.security.core.PanicKill.isSystemApp(this, suspect)) return
+        thread {
+            val ok = com.zhiwei.security.core.PanicKill.killOne(this, suspect)
+            val msg = if (ok) "⚠️ $suspect 恶意拉满音量，已处置" else "⚠️ 检测到软件拉满音量（$suspect 嫌疑，需提权才能强杀）"
+            handler.post {
+                android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+            }
+            NotifHelper.alert(this, "🔊 音量攻击拦截", msg)
         }
     }
 
@@ -100,13 +144,69 @@ private var wakeLock: PowerManager.WakeLock? = null
                 checkAbuseTick = 0
                 runAbuseCheck()
             }
+            fileFloodTick++
+            if (fileFloodTick >= 30) { // 60 秒一轮
+                fileFloodTick = 0
+                runFileFloodCheck()
+            }
             handler.postDelayed(this, WATCH_INTERVAL)
         }
     }
-
-    // ========== 越权行为检测 ==========
+// ========== 越权行为检测 ==========
 
     private var checkAbuseTick = 0
+
+    // ========== F2 文件洪泛检测（持续创建垃圾文件撑爆存储） ==========
+    // 每 60 秒统计公共目录文件数，单轮暴增超阈值 → 告警 + 锁定前台嫌疑 + 提权斩杀
+    private var fileFloodTick = 0
+    private var lastFileCounts: Map<String, Int> = emptyMap()
+    private var floodCooldownAt = 0L
+
+    private val floodWatchDirs = listOf("Download", "DCIM", "Pictures", "Documents", "")
+
+    private fun countPublicFiles(): Map<String, Int> {
+        val root = android.os.Environment.getExternalStorageDirectory()
+        val counts = mutableMapOf<String, Int>()
+        for (sub in floodWatchDirs) {
+            val dir = if (sub.isEmpty()) root else java.io.File(root, sub)
+            counts[sub.ifEmpty { "/" }] = try { dir.list()?.size ?: -1 } catch (e: Throwable) { -1 }
+        }
+        return counts
+    }
+
+    private fun runFileFloodCheck() {
+        if (!Prefs.fileFloodEnabled) return
+        thread {
+            try {
+                val now = System.currentTimeMillis()
+                val current = countPublicFiles()
+                val prev = lastFileCounts
+                lastFileCounts = current
+                if (prev.isEmpty()) return@thread // 首轮只建基线
+                if (now - floodCooldownAt < 120_000L) return@thread
+
+                // 任一监控目录单轮暴增 ≥100 个文件判定洪泛
+                val hit = current.entries.firstOrNull { (dir, count) ->
+                    val old = prev[dir] ?: -1
+                    count >= 0 && old >= 0 && count - old >= 100
+                } ?: return@thread
+
+                floodCooldownAt = now
+                val suspect = getForegroundPackage()?.takeIf {
+                    it != packageName && it !in Prefs.whitelist &&
+                        !com.zhiwei.security.core.PanicKill.isSystemApp(this, it)
+                }
+                val msg = "目录 ${hit.first} 1 分钟内新增 ${hit.value - (prev[hit.first] ?: 0)} 个文件" +
+                    (suspect?.let { "；嫌疑应用：$it" } ?: "")
+                NotifHelper.alert(this, "📁 检测到文件洪泛攻击", msg)
+                showThreatWarning(suspect ?: "未知应用", "持续创建垃圾文件撑爆存储：$msg")
+                if (suspect != null && Privilege.isReady) {
+                    com.zhiwei.security.core.PanicKill.killOne(this, suspect)
+                }
+            } catch (e: Throwable) { }
+        }
+    }
+
 
     private fun runAbuseCheck() {
         if (!Prefs.abuseDetectEnabled) return
@@ -262,16 +362,17 @@ private var wakeLock: PowerManager.WakeLock? = null
         lastBlockedPkg = foreground
         lastBlockedAt = now
 
-        // 1. 立刻强杀（root/Shizuku 提权）
-        val killed = if (Privilege.isReady) {
-            Privilege.forceStop(foreground)
-        } else false
-
-        // 2. 弹出全屏警告（盖住恶意应用界面）
-        showThreatWarning(
-            foreground,
-            if (killed) "黑名单应用已被强制停止" else "检测到黑名单应用进入前台（开启 Root/Shizuku 可自动强杀）"
-        )
+        // 1. 立刻强杀（提权通道）——必须后台线程执行，主线程 waitFor 会 ANR
+        thread {
+            val killed = if (Privilege.isReady) {
+                try { Privilege.forceStop(foreground) } catch (e: Throwable) { false }
+            } else false
+            // 2. 弹出全屏警告（盖住恶意应用界面）
+            showThreatWarning(
+                foreground,
+                if (killed) "黑名单应用已被强制停止" else "检测到黑名单应用进入前台（开启 Root/Shizuku 可自动强杀）"
+            )
+        }
     }
 
     // ========== 屏幕事件 ==========

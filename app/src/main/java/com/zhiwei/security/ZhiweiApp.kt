@@ -26,6 +26,10 @@ class ZhiweiApp : Application() {
         com.zhiwei.security.core.ShizukuManager.init()
         com.zhiwei.security.core.AdbShell.init(this)
         com.zhiwei.security.core.Privilege.warmup()
+        com.zhiwei.security.core.ScanEngineHub.register(com.zhiwei.security.core.AvlSdkEngine())
+        com.zhiwei.security.core.SecurityJournal.init(this)
+        com.zhiwei.security.core.LocalAvScannerManager.init(this)
+        com.zhiwei.security.core.ScanEngineHub.register(com.zhiwei.security.core.LocalAvScannerManager)
         createNotificationChannels()
     }
 
@@ -46,8 +50,16 @@ class ZhiweiApp : Application() {
         )
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_WARN, "安全警告", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "病毒/风险警告通知"
+                description = "病毒/风险警告通知（专属警报音）"
                 enableVibration(true)
+                vibrationPattern = longArrayOf(0, 250, 120, 250)
+                setSound(
+                    android.net.Uri.parse("android.resource://$packageName/${R.raw.zhiwei_alert}"),
+                    android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
             }
         )
     }

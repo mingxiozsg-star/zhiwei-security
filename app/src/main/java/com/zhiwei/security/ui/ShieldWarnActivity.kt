@@ -19,7 +19,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zhiwei.security.core.Prefs
-import com.zhiwei.security.core.ShizukuManager
+import com.zhiwei.security.core.Privilege
 import com.zhiwei.security.ui.theme.ZhiweiSecurityTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -47,7 +47,7 @@ class ShieldWarnActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
                 var processing by remember { mutableStateOf(false) }
                 var statusMsg by remember { mutableStateOf<String?>(null) }
-                val shizukuReady = remember { ShizukuManager.isReady }
+                val privReady = remember { Privilege.isReady }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -98,22 +98,24 @@ class ShieldWarnActivity : ComponentActivity() {
                                     processing = true
                                     Prefs.addToBlacklist(pkg)
 
-                                    if (ShizukuManager.isReady) {
+                                    if (Privilege.isReady) {
                                         // 1. 先撤销设备管理员（否则卸载会失败）
-                                        val admins = withContext(Dispatchers.IO) {
-                                            ShizukuManager.listActiveAdmins(pkg)
-                                        }
-                                        admins.forEach { comp ->
-                                            val rel = comp.removePrefix("$pkg/").removePrefix("$pkg/")
-                                            withContext(Dispatchers.IO) {
-                                                ShizukuManager.removeDeviceAdmin(pkg, rel)
+                                        val adminsOut = withContext(Dispatchers.IO) {
+                                            Privilege.exec("dpm list-active-admins 2>/dev/null | grep '$pkg/'")
+                                        }.second
+                                        adminsOut.lines().filter { it.contains("$pkg/") }.forEach { line ->
+                                            val rel = line.trim().removePrefix("$pkg/").substringBefore(":")
+                                            if (rel.isNotEmpty()) {
+                                                withContext(Dispatchers.IO) {
+                                                    Privilege.exec("dpm remove-active-admin '$pkg/$rel'")
+                                                }
                                             }
                                         }
                                         // 2. 强杀
-                                        withContext(Dispatchers.IO) { ShizukuManager.forceStop(pkg) }
+                                        withContext(Dispatchers.IO) { Privilege.exec("am force-stop '$pkg'") }
                                         // 3. 卸载
-                                        val ok = withContext(Dispatchers.IO) { ShizukuManager.uninstall(pkg) }
-                                        if (ok) {
+                                        val ok = withContext(Dispatchers.IO) { Privilege.exec("pm uninstall '$pkg'") }
+                                        if (ok.first == 0 && ok.second.contains("Success", true)) {
                                             statusMsg = "已强制停止并卸载"
                                             Toast.makeText(this@ShieldWarnActivity, "威胁已清除", Toast.LENGTH_SHORT).show()
                                             processing = false
@@ -123,7 +125,7 @@ class ShieldWarnActivity : ComponentActivity() {
                                             statusMsg = "自动卸载失败，请手动卸载"
                                         }
                                     } else {
-                                        statusMsg = "Shizuku 未连接，跳转手动卸载"
+                                        statusMsg = "提权通道未就绪，跳转手动卸载（到提权中心激活任一通道即可自动处置）"
                                     }
                                     processing = false
                                     // 兜底：跳系统应用详情页
@@ -143,7 +145,7 @@ class ShieldWarnActivity : ComponentActivity() {
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336))
                         ) {
                             Text(
-                                if (shizukuReady) "强制停止并卸载" else "加入黑名单并手动卸载",
+                                if (privReady) "强制停止并卸载" else "加入黑名单并手动卸载",
                                 fontSize = 16.sp, fontWeight = FontWeight.Bold
                             )
                         }
@@ -151,14 +153,14 @@ class ShieldWarnActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // 仅强杀
-                        if (shizukuReady) {
+                        if (privReady) {
                             OutlinedButton(
                                 onClick = {
                                     scope.launch {
                                         processing = true
                                         Prefs.addToBlacklist(pkg)
-                                        val ok = withContext(Dispatchers.IO) { ShizukuManager.forceStop(pkg) }
-                                        statusMsg = if (ok) "已强制停止（已加入黑名单，再次启动会被拦截）" else "强杀失败"
+                                        val r = withContext(Dispatchers.IO) { Privilege.exec("am force-stop '$pkg'") }
+                                        statusMsg = if (r.first == 0) "已强制停止（已加入黑名单，再次启动会被拦截）" else "强杀失败"
                                         processing = false
                                     }
                                 },

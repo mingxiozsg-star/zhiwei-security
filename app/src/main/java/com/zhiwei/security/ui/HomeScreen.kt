@@ -47,9 +47,10 @@ fun HomeScreen(navController: NavController) {
     val scope = rememberCoroutineScope()
     var protectOn by remember { mutableStateOf(Prefs.protectOn) }
     var authRefresh by remember { mutableStateOf(0) }
-    val lastScanTime = remember { Prefs.lastScanTime }
-    val lastThreatCount = remember { Prefs.lastScanThreatCount }
-    val lastAppCount = remember { Prefs.lastScanAppCount }
+    // 扫描信息不用 remember 缓存：从扫描页返回时取到的是最新值
+    val lastScanTime = Prefs.lastScanTime
+    val lastThreatCount = Prefs.lastScanThreatCount
+    val lastAppCount = Prefs.lastScanAppCount
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -260,7 +261,7 @@ fun HomeScreen(navController: NavController) {
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-            Text("见微知著 · 狂按音量键 3 次紧急斩杀", fontSize = 11.sp, color = Color(0xFF606070))
+            Text("见微知著 · 狂按音量键紧急斩杀（无障碍 3 连击 / 2 秒内上下交替 5 次）", fontSize = 11.sp, color = Color(0xFF606070))
             Spacer(modifier = Modifier.height(16.dp))
         }
     }

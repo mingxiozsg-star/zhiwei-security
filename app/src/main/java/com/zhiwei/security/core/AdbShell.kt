@@ -74,6 +74,7 @@ object AdbShell {
         } else {
             refreshStatus() // 同步真实状态（可能连的是旧地址）
         }
+        try { Privilege.refresh() } catch (e: Throwable) { }
         return ok to out
     }
 
@@ -88,7 +89,14 @@ object AdbShell {
     /** 以 shell 身份执行命令 */
     fun shell(command: String): Pair<Int, String> {
         val device = connectedDevice ?: return -1 to "未连接"
-        return rawExec(arrayOf(adbPath, "-s", device, "shell", command), timeoutMs = 30_000)
+        val r = rawExec(arrayOf(adbPath, "-s", device, "shell", command), timeoutMs = 30_000)
+        // 进程级失败（二进制异常/连接断开）：缓存状态可能已过期，后台重检纠正
+        if (r.first == -1) {
+            kotlin.concurrent.thread(isDaemon = true) {
+                try { refreshStatus(); Privilege.refresh() } catch (e: Throwable) { }
+            }
+        }
+        return r
     }
 
     private fun rawExec(args: Array<String>, timeoutMs: Long = 15_000): Pair<Int, String> {

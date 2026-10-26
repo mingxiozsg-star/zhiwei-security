@@ -47,19 +47,35 @@ class NetGuardService : VpnService() {
         fun stop(context: android.content.Context) {
             context.stopService(Intent(context, NetGuardService::class.java))
         }
+
+        /** 名单/配置变化后重建 VPN（未开启则不动） */
+        fun restart(context: android.content.Context) {
+            if (!Prefs.netGuardEnabled) return
+            try { stop(context) } catch (e: Throwable) { }
+            // stopService 是异步的，立刻 start 可能新旧实例并存导致新实例 establish 失败 → 稍等再拉
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                try { start(context) } catch (e: Throwable) { }
+            }, 400)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, buildNotification())
-        if (!running) establishVpn()
+        // 用 vpnInterface 判空而不是 running：restart() 竞态下新实例能正确重建
+        if (vpnInterface == null) establishVpn()
         return START_STICKY
     }
 
     private fun establishVpn() {
         Prefs.init(this)
         val blockedApps = collectBlockedApps()
-        if (blockedApps.isEmpty()) {
-            // 没有要拦的应用就不起 VPN，省电
+        // F3：C2 失陷指标 IP（"ip:port" 格式 → 提取 ip 做 /32 黑洞路由）
+        val c2Ips = if (Prefs.c2FilterEnabled) VirusDb.c2Indicators.mapNotNull {
+            it.substringBefore(":").takeIf { ip -> ip.matches(Regex("""\d+\.\d+\.\d+\.\d+""")) }
+        } else emptyList()
+
+        if (blockedApps.isEmpty() && c2Ips.isEmpty()) {
+            // 没有要拦的对象就不起 VPN，省电
             stopSelf()
             return
         }
@@ -67,8 +83,12 @@ class NetGuardService : VpnService() {
         val builder = Builder()
             .setSession("知微网络拦截")
             .addAddress("10.0.0.2", 32)
-            .addRoute("0.0.0.0", 0)
             .setBlocking(true)
+
+        // C2 IP 黑洞路由：任何应用连 C2 服务器的流量进 VPN 被丢弃
+        c2Ips.forEach { ip ->
+            try { builder.addRoute(ip, 32) } catch (e: Exception) { }
+        }
 
         // 只让被拦截的应用进 VPN（其他应用流量绕行，零影响）
         var added = 0
@@ -78,7 +98,10 @@ class NetGuardService : VpnService() {
                 added++
             } catch (e: Exception) { }
         }
-        if (added == 0) { stopSelf(); return }
+        if (blockedApps.isNotEmpty()) {
+            if (added == 0 && c2Ips.isEmpty()) { stopSelf(); return }
+            builder.addRoute("0.0.0.0", 0)
+        }
 
         vpnInterface = builder.establish()
         if (vpnInterface == null) { stopSelf(); return }

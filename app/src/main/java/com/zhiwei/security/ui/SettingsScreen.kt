@@ -48,9 +48,14 @@ fun SettingsScreen(navController: NavController) {
     var a11yGuard by remember { mutableStateOf(Prefs.a11yGuardEnabled) }
     var installScan by remember { mutableStateOf(Prefs.installScanEnabled) }
     var netGuard by remember { mutableStateOf(Prefs.netGuardEnabled) }
+    var fileFlood by remember { mutableStateOf(Prefs.fileFloodEnabled) }
+    var c2Filter by remember { mutableStateOf(Prefs.c2FilterEnabled) }
     var hideRecents by remember { mutableStateOf(Prefs.hideRecentsEnabled) }
     var abuseDetect by remember { mutableStateOf(Prefs.abuseDetectEnabled) }
     var autoRevoke by remember { mutableStateOf(Prefs.autoRevokeEnabled) }
+    var localAv by remember { mutableStateOf(Prefs.localAvEnabled) }
+    var cloudRecheck by remember { mutableStateOf(Prefs.cloudRecheckEnabled) }
+    var avdbStatus by remember { mutableStateOf("") }
     var revokeStatus by remember { mutableStateOf("") }
     var showAdbDialog by remember { mutableStateOf(false) }
     var adbRefresh by remember { mutableStateOf(0) } // 触发状态重组
@@ -107,7 +112,7 @@ fun SettingsScreen(navController: NavController) {
             SwitchItem("前台应用拦截", "黑名单/恶意应用进入前台时自动强杀并警告", intercept) {
                 intercept = it; Prefs.interceptEnabled = it
             }
-            SwitchItem("音量键管控", "狂按音量键 3 次以上（上/下皆可，2 秒内）斩杀全部第三方应用；检测软件恶意拉满音量", volumeGuard) {
+            SwitchItem("音量键管控", "无障碍 3 连击（或兜底通道 2 秒内上下交替 5 次）斩杀全部第三方应用；检测软件恶意拉满音量", volumeGuard) {
                 volumeGuard = it; Prefs.volumeGuardEnabled = it
             }
             SwitchItem("无障碍霸占管控", "检测霸屏锁机行为，自动斩杀并吊销其无障碍权限", a11yGuard) {
@@ -121,6 +126,52 @@ fun SettingsScreen(navController: NavController) {
             }
             SwitchItem("安装后自动扫描", "新应用安装完成后立即进行风险分析", installScan) {
                 installScan = it; Prefs.installScanEnabled = it
+            }
+            SwitchItem("文件洪泛检测", "监控公共目录文件暴增，识别持续创建垃圾文件的攻击", fileFlood) {
+                fileFlood = it; Prefs.fileFloodEnabled = it
+            }
+            SwitchItem("C2 服务器封堵", "黑洞路由已知恶意服务器 IP，切断远控木马回连", c2Filter) {
+                c2Filter = it; Prefs.c2FilterEnabled = it
+                try { NetGuardService.restart(context) } catch (e: Throwable) { }
+            }
+            SwitchItem("本地离线病毒扫描", "LovelaceAV 引擎二级校验（特征库外置，缺失时自动降级）", localAv) {
+                localAv = it; Prefs.localAvEnabled = it
+                com.zhiwei.security.core.LocalAvScannerManager.reload()
+            }
+            SwitchItem("云端哈希复核", "仅可疑样本提交 SHA256 查询（MB/协同平台/VT），不上传样本本体", cloudRecheck) {
+                cloudRecheck = it; Prefs.cloudRecheckEnabled = it
+            }
+            // 特征库管理
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("AV 特征库", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                    Text(
+                        "状态：${com.zhiwei.security.core.LocalAvScannerManager.state.label}" +
+                            (if (Prefs.avdbUpdatedAt > 0) " · 更新于 " + SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(Prefs.avdbUpdatedAt)) else ""),
+                        fontSize = 12.sp, color = Color(0xFF9090A0)
+                    )
+                    if (avdbStatus.isNotEmpty()) Text(avdbStatus, fontSize = 12.sp, color = Color(0xFF7EC8E3))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row {
+                        TextButton(onClick = {
+                            avdbStatus = "更新中…"
+                            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                                val ok = com.zhiwei.security.core.LocalAvScannerManager.updateDb(context)
+                                withContext(Dispatchers.Main) {
+                                    avdbStatus = if (ok) "✅ 特征库已更新" else "❌ 更新失败（未配置地址或网络不可用）"
+                                }
+                            }
+                        }) { Text("更新特征库") }
+                        TextButton(onClick = {
+                            com.zhiwei.security.core.LocalAvScannerManager.clearDb()
+                            avdbStatus = "特征库已清空"
+                        }) { Text("清空", color = Color(0xFFF44336)) }
+                    }
+                }
             }
             SwitchItem("后台网络拦截", "VPN 黑洞模式：切断被拦截应用的一切网络连接（系统应用豁免）", netGuard) { want ->
                 if (want) {
@@ -307,18 +358,6 @@ fun SettingsScreen(navController: NavController) {
 
             // ===== 通用 =====
             SectionTitle("通用")
-
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    TextButton(onClick = { navController.navigate("permissions") }) {
-                        Text("权限设置 →", color = Color(0xFF7EC8E3), fontSize = 15.sp)
-                    }
-                }
-            }
 
             // ===== 病毒库信息 =====
             SectionTitle("病毒库")

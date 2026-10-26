@@ -99,7 +99,7 @@ fun AboutScreen(navController: NavController) {
                                 pendingInstall = file
                                 updateState = "${release.tag} 下载完成，点击安装"
                             } else {
-                                updateState = "下载失败，请稍后重试"
+                                updateState = "下载失败：${UpdateChecker.lastError ?: "网络错误"}，点击重试"
                             }
                         }
                     },

@@ -101,10 +101,53 @@ object Prefs {
         get() = sp.getBoolean("sw_abuse_detect", true)
         set(v) = sp.edit().putBoolean("sw_abuse_detect", v).apply()
 
+    /** 文件洪泛检测（恶意应用持续创建垃圾文件撑爆存储） */
+    var fileFloodEnabled: Boolean
+        get() = sp.getBoolean("sw_file_flood", true)
+        set(v) = sp.edit().putBoolean("sw_file_flood", v).apply()
+
+    /** C2 服务器封堵（VPN 黑洞路由失陷指标 IP） */
+    var c2FilterEnabled: Boolean
+        get() = sp.getBoolean("sw_c2_filter", true)
+        set(v) = sp.edit().putBoolean("sw_c2_filter", v).apply()
+
     /** 系统权限自动收回（收回非白名单应用的危险权限） */
     var autoRevokeEnabled: Boolean
         get() = sp.getBoolean("sw_auto_revoke", false)
         set(v) = sp.edit().putBoolean("sw_auto_revoke", v).apply()
+
+    /** 本地离线病毒扫描（LovelaceAV 二级校验）总开关 */
+    var localAvEnabled: Boolean
+        get() = sp.getBoolean("sw_local_av", true)
+        set(v) = sp.edit().putBoolean("sw_local_av", v).apply()
+
+    /** 云端哈希复核总开关（仅对可疑结果触发，不上传样本） */
+    var cloudRecheckEnabled: Boolean
+        get() = sp.getBoolean("sw_cloud_recheck", true)
+        set(v) = sp.edit().putBoolean("sw_cloud_recheck", v).apply()
+
+    /** VirusTotal v3 API Key（用户自备，空则跳过 VT 引擎） */
+    var vtApiKey: String
+        get() = sp.getString("vt_api_key", "") ?: ""
+        set(v) = sp.edit().putString("vt_api_key", v).apply()
+
+    /** 本地特征库下载地址（sha256.lst / rules.txt 打包的 zip 或单文件） */
+    var avdbUrl: String
+        get() = sp.getString("avdb_url", "") ?: ""
+        set(v) = sp.edit().putString("avdb_url", v).apply()
+
+    /** 特征库最近更新时间 */
+    var avdbUpdatedAt: Long
+        get() = sp.getLong("avdb_updated_at", 0)
+        set(v) = sp.edit().putLong("avdb_updated_at", v).apply()
+
+    /** VT 配额计数：当日已用 / 计数日期 / 最近一分钟窗口 */
+    var vtDailyCount: Int
+        get() = sp.getInt("vt_daily", 0)
+        set(v) = sp.edit().putInt("vt_daily", v).apply()
+    var vtDailyDate: String
+        get() = sp.getString("vt_daily_date", "") ?: ""
+        set(v) = sp.edit().putString("vt_daily_date", v).apply()
 
     /** 权限白名单（这些应用不参与权限风险评分，也不会被自动收回权限） */
     var permWhitelist: Set<String>

@@ -52,7 +52,12 @@ class AppScanner(private val context: Context) {
             // 用户白名单跳过
             if (pkg.packageName in Prefs.whitelist) return@forEachIndexed
 
-            val result = analyzePackage(pkg) ?: return@forEachIndexed
+            val result = ScanEngineHub.merge(
+                analyzePackage(pkg),
+                ScanEngineHub.scanWithExternalEngines(context, pkg)
+            ) ?: return@forEachIndexed
+            // 可疑样本触发云端哈希复核（后台异步，干净/已判病毒不触发）
+            CloudHashVerifier.maybeRecheck(context, result)
             // 只有中风险及以上才进威胁列表
             if (result.level == VirusDb.ThreatLevel.MEDIUM ||
                 result.level == VirusDb.ThreatLevel.HIGH ||
@@ -204,7 +209,11 @@ class AppScanner(private val context: Context) {
                 @Suppress("DEPRECATION")
                 pm.getPackageInfo(pkgName, PackageManager.GET_PERMISSIONS)
             }
-            analyzePackage(pkg)
+            val local = analyzePackage(pkg)
+            val external = ScanEngineHub.scanWithExternalEngines(context, pkg)
+            val merged = ScanEngineHub.merge(local, external)
+            merged?.let { CloudHashVerifier.maybeRecheck(context, it) }
+            merged
         } catch (e: Exception) { null }
     }
 

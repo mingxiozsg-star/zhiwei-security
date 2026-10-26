@@ -171,6 +171,8 @@ fun AppListScreen(navController: NavController) {
                                         Prefs.removeFromWhitelist(app.packageName)
                                     }
                                     apps = loadInstalledApps(context)
+                                    // D4：黑名单变化 → 重建 VPN，让新名单立即生效
+                                    try { com.zhiwei.security.service.NetGuardService.restart(context) } catch (e: Throwable) { }
                                 }
                             },
                             onToggleWhitelist = {
@@ -182,6 +184,7 @@ fun AppListScreen(navController: NavController) {
                                         Prefs.removeFromBlacklist(app.packageName)
                                     }
                                     apps = loadInstalledApps(context)
+                                    try { com.zhiwei.security.service.NetGuardService.restart(context) } catch (e: Throwable) { }
                                 }
                             },
                             onTogglePermWhitelist = {

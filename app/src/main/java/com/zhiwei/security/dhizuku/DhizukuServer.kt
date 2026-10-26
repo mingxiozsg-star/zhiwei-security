@@ -108,6 +108,22 @@ object DhizukuServer {
         override fun remoteProcess(cmd: Array<out String>?, env: Array<out String>?, dir: String?): IDhizukuRemoteProcess {
             val pkg = requireGranted()
             if (cmd.isNullOrEmpty()) throw RemoteException("empty cmd")
+            // 危险命令拦截：remoteProcess 与知微特权服务同等对待，不能成为绕过弹窗的后门
+            val cmdLine = cmd.joinToString(" ")
+            if (AuthDb.cmdInterceptEnabled && !AuthDb.isCmdWhitelisted(pkg, cmdLine)) {
+                val danger = DangerousCommands.match(cmdLine)
+                if (danger != null) {
+                    val ctx = context ?: throw RemoteException("no context")
+                    when (CommandConfirmActivity.requestBlocking(ctx, pkg, cmdLine, danger, 60_000L)) {
+                        CommandConfirmActivity.Decision.DENY,
+                        CommandConfirmActivity.Decision.TIMEOUT ->
+                            throw RemoteException("用户拒绝执行该命令（${danger.category}）")
+                        CommandConfirmActivity.Decision.WHITELIST ->
+                            AuthDb.addCmdWhitelist(pkg, AuthDb.cmdPrefixOf(cmdLine))
+                        CommandConfirmActivity.Decision.ALLOW_ONCE -> { /* 放行这一次 */ }
+                    }
+                }
+            }
             val pb = ProcessBuilder(*cmd)
             if (env != null) {
                 pb.environment().clear()

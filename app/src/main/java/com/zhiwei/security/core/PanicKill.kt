@@ -71,15 +71,21 @@ object PanicKill {
                     .append(") 2>/dev/null; };")
             }
             sb.append("echo BATCH_DONE")
-            Privilege.exec(sb.toString())
+            val batchRes = Privilege.exec(sb.toString())
+            val batchOk = batchRes.second.contains("BATCH_DONE") // 通道断连时不谎报斩杀数
 
-            // 逐个验尸统计真实斩杀数
-            var alive = 0
+            // 批量验尸：单次会话输出存活包名（逐包 exec 要起 N 个进程，太慢）
+            val checkSb = StringBuilder()
             for (p in targets) {
-                val r = Privilege.exec("pidof $p")
-                if (r.first == 0 && r.second.isNotBlank()) alive++
+                checkSb.append("pidof ").append(p)
+                    .append(" >/dev/null 2>&1 && echo ALIVE:").append(p).append(";")
             }
-            killed = targets.size - alive
+            val check = Privilege.exec(checkSb.toString())
+            val aliveSet = check.second.lineSequence()
+                .filter { it.startsWith("ALIVE:") }
+                .map { it.removePrefix("ALIVE:").trim() }
+                .toSet()
+            killed = if (batchOk) targets.size - aliveSet.size else 0
         } else {
             // 无提权：只能清后台缓存进程（系统限制）
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager

@@ -25,7 +25,6 @@ import com.zhiwei.security.service.ProtectService
 fun ProtectScreen(navController: NavController) {
     val context = LocalContext.current
     var protectOn by remember { mutableStateOf(Prefs.protectOn) }
-    var guardOn by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Color(0xFF0F0F1A),

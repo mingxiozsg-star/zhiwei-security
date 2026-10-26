@@ -57,7 +57,12 @@ class CommandConfirmActivity : ComponentActivity() {
                     Intent(context, CommandConfirmActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 )
-                latch?.await(timeoutMs, TimeUnit.MILLISECONDS)
+                latch?.let { l ->
+                    if (!l.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+                        // 超时单独标记，调用方可以区分「用户拒绝」与「用户没理」
+                        if (decision == Decision.DENY) decision = Decision.TIMEOUT
+                    }
+                }
                 return decision
             } catch (e: Exception) {
                 return Decision.DENY

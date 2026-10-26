@@ -48,6 +48,11 @@ fun PermissionScreen(navController: NavController) {
     val context = LocalContext.current
     var refreshTick by remember { mutableStateOf(0) }
 
+    // Android 13+ 通知权限：优先弹系统授权框（用户一键允许），拒绝过才跳设置页
+    val notifPermLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { refreshTick++ }
+
     // 从系统设置返回时刷新状态
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -103,13 +108,20 @@ fun PermissionScreen(navController: NavController) {
             },
             PermItem(
                 "通知权限",
-                "用于推送威胁警告",
+                "用于推送威胁告警（斩杀/锁机拦截，带专属警报音）",
                 NotificationManagerCompat.from(context).areNotificationsEnabled()
             ) {
-                context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                })
+                if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                    context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+                        android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    // 运行时权限：弹系统授权框让安卓系统检测到并申请
+                    notifPermLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    })
+                }
             },
             PermItem(
                 "忽略电池优化",
@@ -124,7 +136,7 @@ fun PermissionScreen(navController: NavController) {
             },
             PermItem(
                 "悬浮窗权限",
-                "用于在恶意应用界面上层显示警告",
+                "吊销霸屏木马悬浮窗时需要（知微通过 AppOps 吊销恶意应用的悬浮窗，本权限供极端情况下兜底显示警告）",
                 Settings.canDrawOverlays(context)
             ) {
                 context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {

@@ -70,40 +70,88 @@ object UpdateChecker {
         return false
     }
 
+    /** 最近一次下载失败原因（UI 展示用） */
+    @Volatile var lastError: String? = null
+        private set
+
+    /** GitHub 直连不稳定时的加速镜像（逐个回退） */
+    private fun mirrorUrls(url: String): List<String> = listOf(
+        url,
+        "https://ghfast.top/$url",
+        "https://gh-proxy.com/$url",
+        "https://mirror.ghproxy.com/$url"
+    )
+
     /**
-     * 应用内下载 APK（流式写盘），onProgress(0..100)
-     * 返回下载完成的文件，失败返回 null
+     * 应用内下载 APK：多镜像回退 + 每镜像 2 次重试 + Range 断点续传
+     * 返回下载完成的文件，失败返回 null（失败原因写入 lastError）
      */
     fun download(context: Context, url: String, onProgress: (Int) -> Unit): File? {
-        return try {
-            val conn = URL(url).openConnection() as HttpURLConnection
-            conn.connectTimeout = 15_000
-            conn.readTimeout = 30_000
-            conn.setRequestProperty("User-Agent", "zhiwei-security")
-            conn.instanceFollowRedirects = true
-            if (conn.responseCode != 200) return null
-            val total = conn.contentLengthLong
-            val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-            val file = File(dir, "zhiwei-update.apk")
-            conn.inputStream.use { input ->
-                FileOutputStream(file).use { output ->
-                    val buf = ByteArray(64 * 1024)
-                    var downloaded = 0L
-                    while (true) {
-                        val n = input.read(buf)
-                        if (n < 0) break
-                        output.write(buf, 0, n)
-                        downloaded += n
-                        if (total > 0) onProgress(((downloaded * 100) / total).toInt())
+        lastError = null
+        val dir = File(context.cacheDir, "updates").apply { mkdirs() }
+        val file = File(dir, "zhiwei-update.apk")
+        val errors = mutableListOf<String>()
+
+        for (mirror in mirrorUrls(url)) {
+            for (attempt in 1..2) {
+                try {
+                    val existing = if (attempt > 1 && file.exists()) file.length() else 0L
+                    val conn = URL(mirror).openConnection() as HttpURLConnection
+                    conn.connectTimeout = 20_000
+                    conn.readTimeout = 60_000
+                    conn.setRequestProperty("User-Agent", "zhiwei-security")
+                    conn.instanceFollowRedirects = true
+                    if (existing > 0) conn.setRequestProperty("Range", "bytes=$existing-")
+
+                    val code = conn.responseCode
+                    if (code == 416) { file.delete(); continue }          // 范围失效，从头来
+                    if (code != 200 && code != 206) {
+                        errors.add("HTTP $code")
+                        break                                             // 此镜像不可用，换下一个
                     }
+                    val append = code == 206 && existing > 0
+                    val total = conn.contentLengthLong + (if (append) existing else 0L)
+
+                    conn.inputStream.use { input ->
+                        (if (append) FileOutputStream(file, true) else FileOutputStream(file)).use { output ->
+                            val buf = ByteArray(64 * 1024)
+                            var downloaded = if (append) existing else 0L
+                            while (true) {
+                                val n = input.read(buf)
+                                if (n < 0) break
+                                output.write(buf, 0, n)
+                                downloaded += n
+                                if (total > 0) onProgress(((downloaded * 100) / total).toInt().coerceAtMost(100))
+                            }
+                            // 完整性校验：连接中途断开 read 会返回 -1，没下完的 APK 不能算成功
+                            if (total > 0 && downloaded < total) {
+                                throw java.io.IOException("下载不完整 $downloaded/$total")
+                            }
+                        }
+                    }
+                    onProgress(100)
+                    return file
+                } catch (e: Throwable) {
+                    errors.add("${mirror.substringAfter("://").substringBefore("/")}: ${e.javaClass.simpleName}")
                 }
             }
-            file
-        } catch (e: Throwable) { null }
+        }
+        lastError = errors.lastOrNull() ?: "未知网络错误"
+        return null
     }
 
-    /** 调起系统安装器 */
+    /** 调起系统安装器（Android 8+ 先检查「安装未知应用」权限并引导授权） */
     fun install(context: Context, apk: File) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+            !context.packageManager.canRequestPackageInstalls()) {
+            context.startActivity(
+                Intent(
+                    android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:${context.packageName}")
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            return
+        }
         val uri: Uri = FileProvider.getUriForFile(
             context, "com.zhiwei.security.fileprovider", apk
         )

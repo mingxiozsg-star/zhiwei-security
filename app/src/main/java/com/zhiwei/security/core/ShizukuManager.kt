@@ -44,6 +44,7 @@ object ShizukuManager {
         if (code == requestCode) {
             val granted = grantResult == PackageManager.PERMISSION_GRANTED
             Prefs.shizukuGranted = granted
+            try { Privilege.refresh() } catch (e: Throwable) { }
             requestCallback?.invoke(granted)
             requestCallback = null
         }

@@ -229,6 +229,53 @@ fun ThreatCard(threat: VirusDb.ScanResult) {
                         color = Color(0xFFF44336)
                     )
                 }
+
+                // 本地 AV 引擎核验区块
+                com.zhiwei.security.core.LocalAvScannerManager.lastMatches[threat.packageName]?.let { matches ->
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF12121F))
+                            .padding(8.dp)
+                    ) {
+                        Text("🛡 本地 AV 引擎核验", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7EC8E3))
+                        matches.forEach { m ->
+                            Text(
+                                "${if (m.kind == "rule") "规则" else "特征"}「${m.name}」 ${m.detail}（${m.severity}）",
+                                fontSize = 10.sp, color = Color(0xFFCE93D8)
+                            )
+                        }
+                    }
+                }
+
+                // 云端哈希复核区块
+                com.zhiwei.security.core.CloudHashVerifier.verdicts[threat.packageName]?.let { v ->
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF12121F))
+                            .padding(8.dp)
+                    ) {
+                        Text("☁️ 云端核验", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7EC8E3))
+                        Text("SHA256 ${v.sha256.take(16)}…", fontSize = 9.sp, color = Color(0xFF9090A0))
+                        v.results.forEach { e ->
+                            Text(
+                                "${e.engine}：${if (e.malicious) "恶意 · ${e.family}" + (if (e.superHigh) " · 超级高危" else "") else "未检出"}" +
+                                    (if (e.tags.isNotEmpty()) " [${e.tags.joinToString(",")}]" else "") +
+                                    " · ${e.timeText}",
+                                fontSize = 10.sp,
+                                color = if (e.malicious) Color(0xFFF44336) else Color(0xFF8BC34A)
+                            )
+                        }
+                        if (v.triggeredKill) {
+                            Text("⚔️ 已触发斩杀", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF9C27B0))
+                        }
+                    }
+                }
             }
 
             // 风险分数

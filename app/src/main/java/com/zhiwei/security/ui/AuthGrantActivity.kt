@@ -29,13 +29,21 @@ class AuthGrantActivity : ComponentActivity() {
 
         @Synchronized
         fun request(context: Context, pkg: String, callback: (Boolean) -> Unit) {
-            // 已有一个授权框在显示时，直接拒绝后来的（防轰炸）
+            // 已有一个授权框在显示/排队时，直接拒绝后来的（防轰炸）
+            // 注意：showing 必须在入队时就置位，否则弹窗启动前的竞态会吞掉先到的回调
             if (showing) { callback(false); return }
+            showing = true
             pending = pkg to callback
-            context.startActivity(
-                Intent(context, AuthGrantActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
+            try {
+                context.startActivity(
+                    Intent(context, AuthGrantActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            } catch (e: Throwable) {
+                pending = null
+                showing = false
+                callback(false)
+            }
         }
 
         @Synchronized
