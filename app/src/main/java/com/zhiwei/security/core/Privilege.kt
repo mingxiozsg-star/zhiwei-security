@@ -66,7 +66,8 @@ object Privilege {
             ShizukuManager.isReady -> Level.SHIZUKU
             else -> Level.NONE
         }
-        levelState.value = lv
+        // Compose State 必须主线程写
+        SecurityJournal.runOnMain { levelState.value = lv }
     }
 
     /** 每 30 秒后台重检一次（ADB 掉线/Shizuku 启停/授权变化可自动跟上） */

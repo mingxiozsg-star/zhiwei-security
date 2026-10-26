@@ -38,15 +38,24 @@ object SecurityJournal {
     @Synchronized
     fun log(category: String, message: String) {
         val e = Entry(System.currentTimeMillis(), category, message)
-        entries.add(0, e)
-        while (entries.size > MAX_ENTRIES) entries.removeAt(entries.size - 1)
+        // Compose SnapshotState 非线程安全：必须在主线程写
+        runOnMain {
+            entries.add(0, e)
+            while (entries.size > MAX_ENTRIES) entries.removeAt(entries.size - 1)
+        }
         try {
             logFile?.appendText("${e.timeText} [$category] $message\n")
         } catch (t: Throwable) { }
     }
 
+    private val mainHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
+    internal fun runOnMain(block: () -> Unit) {
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) block()
+        else mainHandler.post(block)
+    }
+
     fun clear() {
-        entries.clear()
+        runOnMain { entries.clear() }
         try { logFile?.delete() } catch (t: Throwable) { }
     }
 }

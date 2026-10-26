@@ -160,9 +160,12 @@ object LocalAvScannerManager : ScanEngine {
             pkg.applicationInfo?.loadLabel(context.packageManager)?.toString() ?: pkg.packageName
         } catch (e: Throwable) { pkg.packageName }
         val matches = scanApk(path) ?: return null
-        if (matches.isEmpty()) { lastMatches.remove(pkg.packageName); return null }
+        if (matches.isEmpty()) {
+            SecurityJournal.runOnMain { lastMatches.remove(pkg.packageName) }
+            return null
+        }
 
-        lastMatches[pkg.packageName] = matches
+        SecurityJournal.runOnMain { lastMatches[pkg.packageName] = matches }
         val worst = matches.maxBy { severityRank(it.severity) }
         val level = when (worst.severity) {
             "SUPER" -> VirusDb.ThreatLevel.VIRUS
@@ -238,24 +241,24 @@ object LocalAvScannerManager : ScanEngine {
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 
-    /** 从 APK 的 classes*.dex / resources.arsc 提取可见字符流（限量，防大包拖死） */
+    /** 从 APK 的 classes*.dex / resources.arsc 提取可见字符流（总量限 8MB，防大包拖死/OOM） */
     private fun extractStrings(apk: File, maxBytes: Long): String {
         val sb = StringBuilder(512 * 1024)
+        var budget = 8 * 1024 * 1024L // 全包总量上限
         ZipFile(apk).use { z ->
             val entries = z.entries()
-            while (entries.hasMoreElements()) {
+            while (entries.hasMoreElements() && budget > 0) {
                 val e = entries.nextElement()
                 val n = e.name
                 if (!(n.endsWith(".dex") || n == "resources.arsc" || n.endsWith(".xml"))) continue
                 if (e.size > maxBytes) continue
                 z.getInputStream(e).use { inp ->
                     val buf = ByteArray(32 * 1024)
-                    var total = 0L
                     var r = inp.read(buf)
-                    while (r > 0 && total < maxBytes) {
-                        // 只保留可见 ASCII/UTF-8 片段，减少误报与内存
-                        sb.append(String(buf, 0, r, Charsets.ISO_8859_1))
-                        total += r
+                    while (r > 0 && budget > 0) {
+                        val take = minOf(r.toLong(), budget).toInt()
+                        sb.append(String(buf, 0, take, Charsets.ISO_8859_1))
+                        budget -= take
                         r = inp.read(buf)
                     }
                 }

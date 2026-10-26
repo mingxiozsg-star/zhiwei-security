@@ -119,7 +119,7 @@ object CloudHashVerifier {
             NotifHelper.alert(context, "☠️ 云端复核确认超级高危",
                 "$appName 被云端标记为锁机/远控类威胁，已触发斩杀")
         }
-        verdicts[pkg] = Verdict(pkg, sha, results, killed)
+        SecurityJournal.runOnMain { verdicts[pkg] = Verdict(pkg, sha, results, killed) }
         SecurityJournal.log(
             "云端复核",
             "包名=$pkg 哈希=${sha.take(16)}… " +
