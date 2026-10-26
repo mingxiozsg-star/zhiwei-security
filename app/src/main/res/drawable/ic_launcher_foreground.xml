@@ -1,32 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- 盾牌外形：樱粉描边 + 深色填充 -->
+
+    <!-- 背景光晕：粉色径向渐变 -->
+    <path android:pathData="M54,30 m-26,0 a26,26 0 1,1 52,0 a26,26 0 1,1 -52,0">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="54" android:gradientRadius="30">
+                <item android:offset="0" android:color="#40FF6B9D"/>
+                <item android:offset="1" android:color="#00FF6B9D"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 盾牌主体：深色纵向渐变填充 -->
+    <path android:pathData="M54,24 L82,36 L82,58 C82,76 70,90 54,97 C38,90 26,76 26,58 L26,36 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="54" android:startY="24" android:endX="54" android:endY="97">
+                <item android:offset="0" android:color="#2E2E4A"/>
+                <item android:offset="1" android:color="#14142A"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 盾牌描边：粉→冰蓝线性渐变 -->
     <path
-        android:fillColor="#1E1E30"
-        android:strokeColor="#FF6B9D"
-        android:strokeWidth="3.5"
-        android:pathData="M54,26 L80,37 L80,58 C80,75 69,88 54,95 C39,88 28,75 28,58 L28,37 Z" />
-    <!-- 内部浅粉高光层 -->
+        android:strokeWidth="3"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M54,24 L82,36 L82,58 C82,76 70,90 54,97 C38,90 26,76 26,58 L26,36 Z">
+        <aapt:attr name="android:strokeColor">
+            <gradient android:type="linear" android:startX="26" android:startY="24" android:endX="82" android:endY="97">
+                <item android:offset="0" android:color="#FF8FB8"/>
+                <item android:offset="0.5" android:color="#FF6B9D"/>
+                <item android:offset="1" android:color="#7EC8E3"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 内部高光层 -->
     <path
-        android:fillColor="#33FF6B9D"
-        android:pathData="M54,32 L74,41 L74,58 C74,71 66,81 54,87 C42,81 34,71 34,58 L34,41 Z" />
-    <!-- 冰蓝安全勾 -->
+        android:fillColor="#1AFF8FB8"
+        android:pathData="M54,31 L75,41 L75,58 C75,72 66,83 54,89 C42,83 33,72 33,58 L33,41 Z" />
+
+    <!-- 安全勾：白→冰蓝渐变，圆润端点 -->
     <path
-        android:strokeColor="#7EC8E3"
-        android:strokeWidth="5"
+        android:strokeWidth="5.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="#00000000"
-        android:pathData="M43,58 L51,66 L67,47" />
-    <!-- 顶部呆毛点缀 -->
+        android:pathData="M42,58 L51,67 L68,46">
+        <aapt:attr name="android:strokeColor">
+            <gradient android:type="linear" android:startX="42" android:startY="46" android:endX="68" android:endY="67">
+                <item android:offset="0" android:color="#FFFFFF"/>
+                <item android:offset="1" android:color="#7EC8E3"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 四角星芒点缀（右上） -->
     <path
-        android:strokeColor="#FF6B9D"
-        android:strokeWidth="3"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M54,26 Q58,18 64,16" />
+        android:fillColor="#FFD3E6"
+        android:pathData="M80,20 L82,25 L87,27 L82,29 L80,34 L78,29 L73,27 L78,25 Z" />
+    <!-- 小星芒（左下） -->
+    <path
+        android:fillColor="#80FFD3E6"
+        android:pathData="M30,78 L31.3,81 L34.3,82.3 L31.3,83.6 L30,86.6 L28.7,83.6 L25.7,82.3 L28.7,81 Z" />
 </vector>

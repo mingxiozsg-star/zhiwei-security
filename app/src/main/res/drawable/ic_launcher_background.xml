@@ -1,13 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#0F0F1A"
-        android:pathData="M0,0h108v108h-108z" />
-    <path
-        android:fillColor="#1A1A2E"
-        android:pathData="M0,0h108v54h-108z" />
+    <!-- 深色径向渐变底：中心微亮，边缘沉下去 -->
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="48" android:gradientRadius="78">
+                <item android:offset="0" android:color="#23233D"/>
+                <item android:offset="0.6" android:color="#15152A"/>
+                <item android:offset="1" android:color="#0C0C16"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- 底部一抹粉色氛围光 -->
+    <path android:pathData="M54,108 m-40,0 a40,26 0 1,1 80,0 a40,26 0 1,1 -80,0">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="104" android:gradientRadius="34">
+                <item android:offset="0" android:color="#2BFF6B9D"/>
+                <item android:offset="1" android:color="#00FF6B9D"/>
+            </gradient>
+        </aapt:attr>
+    </path>
 </vector>

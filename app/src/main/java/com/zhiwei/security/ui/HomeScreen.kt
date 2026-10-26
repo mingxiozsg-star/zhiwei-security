@@ -25,7 +25,12 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.zhiwei.security.core.Prefs
 import com.zhiwei.security.core.Privilege
+import com.zhiwei.security.core.ShizukuManager
+import com.zhiwei.security.dhizuku.ZhiweiDAReceiver
 import com.zhiwei.security.service.ProtectService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -39,7 +44,9 @@ private val TextGray = Color(0xFF9090A0)
 @Composable
 fun HomeScreen(navController: NavController) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var protectOn by remember { mutableStateOf(Prefs.protectOn) }
+    var authRefresh by remember { mutableStateOf(0) }
     val lastScanTime = remember { Prefs.lastScanTime }
     val lastThreatCount = remember { Prefs.lastScanThreatCount }
     val lastAppCount = remember { Prefs.lastScanAppCount }
@@ -144,6 +151,73 @@ fun HomeScreen(navController: NavController) {
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold
                 )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ===== 提权授权快捷卡：Shizuku / Dhizuku =====
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = CardDark)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("提权授权", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("授权后解锁强杀/卸载/权限收回等全部能力", fontSize = 11.sp, color = TextGray)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    @Suppress("UNUSED_EXPRESSION") authRefresh
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Shizuku
+                        val shizukuOk = ShizukuManager.isReady
+                        Card(
+                            onClick = {
+                                if (ShizukuManager.isBinderAlive && !shizukuOk) {
+                                    ShizukuManager.requestPermission { authRefresh++ }
+                                } else navController.navigate("privilege")
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF23233D))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("🔐 Shizuku", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    if (shizukuOk) "✅ 已授权" else if (ShizukuManager.isBinderAlive) "点击授权" else "未运行 · 点查看",
+                                    fontSize = 11.sp,
+                                    color = if (shizukuOk) Color(0xFF9CCC65) else Ice
+                                )
+                            }
+                        }
+                        // Dhizuku（内置服务端·设备所有者）
+                        val ownerOk = ZhiweiDAReceiver.isDeviceOwner(context)
+                        Card(
+                            onClick = {
+                                if (!ownerOk && Privilege.isReady) {
+                                    scope.launch {
+                                        withContext(Dispatchers.IO) {
+                                            Privilege.exec("dpm set-device-owner com.zhiwei.security/.dhizuku.ZhiweiDAReceiver")
+                                        }
+                                        authRefresh++
+                                    }
+                                } else navController.navigate("privilege")
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF23233D))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("👑 Dhizuku", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    if (ownerOk) "✅ 已激活" else if (Privilege.isReady) "一键激活" else "需提权 · 点查看",
+                                    fontSize = 11.sp,
+                                    color = if (ownerOk) Color(0xFF9CCC65) else Pink
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
