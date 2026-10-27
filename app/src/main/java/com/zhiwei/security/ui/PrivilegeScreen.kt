@@ -20,6 +20,7 @@ import com.zhiwei.security.core.AdbShell
 import com.zhiwei.security.core.DhizukuManager
 import com.zhiwei.security.core.Privilege
 import com.zhiwei.security.core.ShizukuManager
+import com.zhiwei.security.core.ShizukuServer
 import com.zhiwei.security.dhizuku.ZhiweiDAReceiver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -39,6 +40,8 @@ fun PrivilegeScreen(navController: NavController) {
     var refresh by remember { mutableStateOf(0) }
     var ownerLog by remember { mutableStateOf("") }
     var ownerBusy by remember { mutableStateOf(false) }
+    var shizukuLog by remember { mutableStateOf("") }
+    var shizukuBusy by remember { mutableStateOf(false) }
 
     LaunchedEffect(refresh) {
         withContext(Dispatchers.IO) {
@@ -184,6 +187,57 @@ fun PrivilegeScreen(navController: NavController) {
                             Text("授权", color = Color(0xFFFF6B9D))
                         }
                     }
+                }
+            }
+
+            // 内嵌 Shizuku 服务端（应用内一键启动，Root/ADB 全支持）
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("⚙️ 内嵌 Shizuku 服务端", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                            Text(
+                                if (ShizukuServer.isRunning) "✅ 运行中" else "未运行",
+                                fontSize = 13.sp, color = if (ShizukuServer.isRunning) Color(0xFF9CCC65) else Color(0xFF9090A0)
+                            )
+                        }
+                        if (!shizukuBusy) {
+                            TextButton(onClick = {
+                                if (ShizukuServer.isRunning) {
+                                    shizukuLog = ShizukuServer.stop()
+                                    refresh++
+                                } else {
+                                    shizukuBusy = true; shizukuLog = "部署中…"
+                                    scope.launch {
+                                        val r = withContext(Dispatchers.IO) { ShizukuServer.deployAndStart(context) }
+                                        shizukuLog = r; shizukuBusy = false; refresh++
+                                    }
+                                }
+                            }) {
+                                Text(
+                                    if (ShizukuServer.isRunning) "停止" else "启动",
+                                    color = Color(0xFFFF6B9D)
+                                )
+                            }
+                        } else {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color(0xFFFF6B9D))
+                        }
+                    }
+                    if (shizukuLog.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(shizukuLog, fontSize = 12.sp, color = Color(0xFF7EC8E3), lineHeight = 16.sp)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "官方 Shizuku v13.6.0 服务端（shizuku_server.dex + starter）内嵌部署。" +
+                            "Root 设备启动后第三方应用可直接发现使用；" +
+                            "ADB 设备本应用可用（第三方授权受 manager 包名校验限制）。需提权通道（本机 ADB/Root）。",
+                        fontSize = 11.sp, color = Color(0xFF707088), lineHeight = 15.sp
+                    )
                 }
             }
 

@@ -63,6 +63,11 @@ object Prefs {
         get() = sp.getBoolean("sw_volume_guard", true)
         set(v) = sp.edit().putBoolean("sw_volume_guard", v).apply()
 
+    /** 扫描确认病毒后自动斩杀（冻结→回收权限→卸载），默认开 */
+    var autoKillOnVirus: Boolean
+        get() = sp.getBoolean("sw_auto_kill_virus", true)
+        set(v) = sp.edit().putBoolean("sw_auto_kill_virus", v).apply()
+
     /** 无障碍霸占管控 */
     var a11yGuardEnabled: Boolean
         get() = sp.getBoolean("sw_a11y_guard", true)

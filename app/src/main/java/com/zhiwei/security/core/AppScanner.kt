@@ -58,6 +58,29 @@ class AppScanner(private val context: Context) {
             ) ?: return@forEachIndexed
             // 可疑样本触发云端哈希复核（后台异步，干净/已判病毒不触发）
             CloudHashVerifier.maybeRecheck(context, result)
+            // 确认病毒 → 自动斩杀（冻结→回收无障碍/管理员→卸载+警报），开关默认开
+            if (result.level == VirusDb.ThreatLevel.VIRUS && Prefs.autoKillOnVirus &&
+                result.packageName !in Prefs.whitelist) {
+                val pkgName = result.packageName
+                val appLabel = result.appName
+                kotlin.concurrent.thread(isDaemon = true) {
+                    try {
+                        if (Privilege.isReady) {
+                            Privilege.forceStop(pkgName)
+                            Privilege.revokeAccessibility(context, pkgName)
+                            val ok = Privilege.uninstall(pkgName)
+                            NotifHelper.alert(context, "☠️ 扫描命中病毒，已斩杀",
+                                "$appLabel 判定为病毒，已自动处置（卸载${if (ok) "成功" else "失败"}）")
+                            SecurityJournal.log("斩杀", "扫描联动斩杀 $pkgName 卸载${if (ok) "成功" else "失败"}")
+                        } else {
+                            Privilege.exec("am force-stop $pkgName")
+                            NotifHelper.alert(context, "⚠️ 扫描命中病毒",
+                                "$appLabel 判定为病毒；无提权通道，仅做后台清理，请连接本机 ADB/Root 后重扫以彻底卸载")
+                            SecurityJournal.log("斩杀", "扫描命中 $pkgName 但无提权，未卸载")
+                        }
+                    } catch (e: Throwable) { }
+                }
+            }
             // 只有中风险及以上才进威胁列表
             if (result.level == VirusDb.ThreatLevel.MEDIUM ||
                 result.level == VirusDb.ThreatLevel.HIGH ||

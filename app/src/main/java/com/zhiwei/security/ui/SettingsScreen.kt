@@ -44,6 +44,7 @@ fun SettingsScreen(navController: NavController) {
     val context = LocalContext.current
 
     var intercept by remember { mutableStateOf(Prefs.interceptEnabled) }
+    var autoKill by remember { mutableStateOf(Prefs.autoKillOnVirus) }
     var volumeGuard by remember { mutableStateOf(Prefs.volumeGuardEnabled) }
     var a11yGuard by remember { mutableStateOf(Prefs.a11yGuardEnabled) }
     var installScan by remember { mutableStateOf(Prefs.installScanEnabled) }
@@ -109,6 +110,9 @@ fun SettingsScreen(navController: NavController) {
             // ===== 检测与拦截开关 =====
             SectionTitle("检测与拦截")
 
+            SwitchItem("扫描病毒自动斩杀", "扫描确认病毒（黑名单/特征命中）后自动冻结、回收权限并卸载，警报通知", autoKill) {
+                autoKill = it; Prefs.autoKillOnVirus = it
+            }
             SwitchItem("前台应用拦截", "黑名单/恶意应用进入前台时自动强杀并警告", intercept) {
                 intercept = it; Prefs.interceptEnabled = it
             }
