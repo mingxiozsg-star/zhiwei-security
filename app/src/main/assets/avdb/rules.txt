@@ -1,0 +1,17 @@
+# 知微安全内置自定义规则库（YARA 风格简化格式）
+# 格式：规则名|威胁等级(SUPER/HIGH/RISK)|any/all|特征串1;特征串2;...
+# 特征串为 APK 的 DEX/resources.arsc 中可见字符串
+# 锁机勒索：出现勒索话术即超级高危
+锁机勒索话术|SUPER|any|联系QQ解锁;加QQ解锁;解锁加QQ;扫码付款解锁;付款解锁;手机已被锁定,请支付;解锁密码请联系
+# 锁屏霸屏组合：悬浮窗类型+禁用返回/键盘守卫（锁机木马典型行为）
+锁机霸屏行为|SUPER|all|TYPE_SYSTEM_ALERT;DISABLE_KEYGUARD;onBackPressed
+# 设备管理员滥用：声明 DeviceAdminReceiver 且调用 lockNow 锁屏
+设备管理员锁屏滥用|HIGH|all|DeviceAdminReceiver;lockNow
+# 恶意无障碍：AccessibilityService + 模拟点击/手势（自动点击木马）
+无障碍自动操作|HIGH|all|AccessibilityService;dispatchGesture
+# 短信窃取：读短信+发送短信+拦截回传
+短信窃取|HIGH|all|android.provider.Telephony.SMS_RECEIVED;sendTextMessage;content://sms
+# 远控指令特征
+远控C2指令|SUPER|any|/bot/connect;cmd_shell;upload_contacts;get_sms_all;start_record_screen
+# 家族标记（知名安卓木马内部包名/域名残留）
+木马家族残留|HIGH|any|com.sd.ncnm;Anubis;Cerberus;EventBot;SpyNote;AhMyth

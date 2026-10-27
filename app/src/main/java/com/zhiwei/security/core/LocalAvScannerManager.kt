@@ -54,10 +54,28 @@ object LocalAvScannerManager : ScanEngine {
 
     private var dbDir: File? = null
 
-    /** 应用启动时调用：加载外置特征库；失败静默降级 */
+    /** 应用启动时调用：内置特征库播种（assets→filesDir，仅首次）→ 加载；失败静默降级 */
     fun init(context: Context) {
-        dbDir = File(context.filesDir, DIR_NAME)
+        dbDir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
+        seedBuiltinDb(context)
         reload()
+    }
+
+    /** 首启把内置特征库从 assets 复制到外置目录（不覆盖已有/已更新的库） */
+    private fun seedBuiltinDb(context: Context) {
+        val dir = dbDir ?: return
+        try {
+            for (name in listOf(HASH_FILE, RULE_FILE)) {
+                val out = File(dir, name)
+                if (out.exists()) continue
+                try {
+                    context.assets.open("$DIR_NAME/$name").use { inp ->
+                        out.outputStream().use { inp.copyTo(it) }
+                    }
+                    SecurityJournal.log("本地AV", "内置特征库已播种：$name")
+                } catch (e: Throwable) { /* assets 中不存在该文件则跳过 */ }
+            }
+        } catch (e: Throwable) { }
     }
 
     override fun isAvailable(context: Context): Boolean =

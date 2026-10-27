@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -59,6 +60,12 @@ fun HomeScreen(navController: NavController) {
         label = "pulse"
     )
 
+    // 入场动画：整页淡入+上移
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { entered = true }
+    val enterAlpha by animateFloatAsState(if (entered) 1f else 0f, tween(500), label = "enterA")
+    val enterOffset by animateFloatAsState(if (entered) 0f else 40f, tween(500), label = "enterO")
+
     Scaffold(
         containerColor = BgDark,
         topBar = {
@@ -83,10 +90,36 @@ fun HomeScreen(navController: NavController) {
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .graphicsLayer { alpha = enterAlpha; translationY = enterOffset }
                 .padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Hero 横幅：蓝色安全渐变（与图标同风格）
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        Brush.linearGradient(listOf(Color(0xFF4A6CF7), Color(0xFF1E3FA8)))
+                    )
+                    .padding(20.dp)
+            ) {
+                Column {
+                    Text("知微，守护你的安全", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date()) +
+                            "  ·  " + if (protectOn) "实时防护运行中" else "防护未开启",
+                        fontSize = 13.sp, color = Color(0xFFD8E2FF)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(Privilege.statusText, fontSize = 11.sp, color = Color(0xFFAEC4FF))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             // 安全状态圆环（品牌渐变）
             Box(

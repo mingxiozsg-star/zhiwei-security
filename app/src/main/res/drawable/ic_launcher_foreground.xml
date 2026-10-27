@@ -6,72 +6,45 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 背景光晕：粉色径向渐变 -->
+    <!-- 背景柔光 -->
     <path android:pathData="M54,54 m-30,0 a30,30 0 1,1 60,0 a30,30 0 1,1 -60,0">
         <aapt:attr name="android:fillColor">
             <gradient android:type="radial" android:centerX="54" android:centerY="54" android:gradientRadius="34">
-                <item android:offset="0" android:color="#33FF6B9D"/>
-                <item android:offset="1" android:color="#00FF6B9D"/>
+                <item android:offset="0" android:color="#26FFFFFF"/>
+                <item android:offset="1" android:color="#00FFFFFF"/>
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- 猫耳盾牌主体：深色纵向渐变（顶部两侧尖耳 + 盾牌下身） -->
-    <path android:pathData="M30,18 L42,26 L54,30 L66,26 L78,18 L80,32 L84,38 L84,58 C84,77 71,91 54,98 C37,91 24,77 24,58 L24,38 L28,32 Z">
+    <!-- 盾牌主体：标准安全软件风格（上宽下尖，圆弧肩线） -->
+    <path android:pathData="M54,22 C62,29 72,33 84,35 L84,56 C84,76 71,91 54,98 C37,91 24,76 24,56 L24,35 C36,33 46,29 54,22 Z">
         <aapt:attr name="android:fillColor">
-            <gradient android:type="linear" android:startX="54" android:startY="18" android:endX="54" android:endY="98">
-                <item android:offset="0" android:color="#2E2E4A"/>
-                <item android:offset="1" android:color="#14142A"/>
+            <gradient android:type="linear" android:startX="24" android:startY="22" android:endX="84" android:endY="98">
+                <item android:offset="0" android:color="#4A6CF7"/>
+                <item android:offset="1" android:color="#1E3FA8"/>
             </gradient>
         </aapt:attr>
     </path>
 
-    <!-- 猫耳盾牌描边：粉→冰蓝线性渐变 -->
+    <!-- 盾牌内层：稍亮的立体层次 -->
+    <path android:pathData="M54,29 C60.5,34.5 69,38.5 78,40 L78,56 C78,72 67.5,85 54,91 C40.5,85 30,72 30,56 L30,40 C39,38.5 47.5,34.5 54,29 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="30" android:startY="29" android:endX="78" android:endY="91">
+                <item android:offset="0" android:color="#6C8CFF"/>
+                <item android:offset="1" android:color="#2B52C8"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 顶部高光 -->
+    <path android:fillColor="#33FFFFFF" android:pathData="M54,29 C60.5,34.5 69,38.5 78,40 L78,47 C69,45 60.5,41 54,36 C47.5,41 39,45 30,47 L30,40 C39,38.5 47.5,34.5 54,29 Z" />
+
+    <!-- 安全对勾：白色粗体圆润 -->
     <path
-        android:strokeWidth="3"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="#00000000"
-        android:pathData="M30,18 L42,26 L54,30 L66,26 L78,18 L80,32 L84,38 L84,58 C84,77 71,91 54,98 C37,91 24,77 24,58 L24,38 L28,32 Z">
-        <aapt:attr name="android:strokeColor">
-            <gradient android:type="linear" android:startX="24" android:startY="18" android:endX="84" android:endY="98">
-                <item android:offset="0" android:color="#FF8FB8"/>
-                <item android:offset="0.5" android:color="#FF6B9D"/>
-                <item android:offset="1" android:color="#7EC8E3"/>
-            </gradient>
-        </aapt:attr>
-    </path>
-
-    <!-- 左耳内衬（粉） -->
-    <path android:fillColor="#55FF6B9D" android:pathData="M31.5,23 L39,28.5 L32.5,33 Z" />
-    <!-- 右耳内衬（冰蓝） -->
-    <path android:fillColor="#557EC8E3" android:pathData="M76.5,23 L69,28.5 L75.5,33 Z" />
-
-    <!-- 内部高光层 -->
-    <path
-        android:fillColor="#14FF8FB8"
-        android:pathData="M54,36 L77,45 L77,58 C77,73 67,85 54,91 C41,85 31,73 31,58 L31,45 Z" />
-
-    <!-- 左眼：竖瞳猫眼 -->
-    <path android:fillColor="#FF8FB8" android:pathData="M44,54 m-4,0 a4,5 0 1,1 8,0 a4,5 0 1,1 -8,0" />
-    <path android:fillColor="#14142A" android:pathData="M44,50.5 L45.6,54 L44,57.5 L42.4,54 Z" />
-    <!-- 右眼：竖瞳猫眼 -->
-    <path android:fillColor="#7EC8E3" android:pathData="M64,54 m-4,0 a4,5 0 1,1 8,0 a4,5 0 1,1 -8,0" />
-    <path android:fillColor="#14142A" android:pathData="M64,50.5 L65.6,54 L64,57.5 L62.4,54 Z" />
-
-    <!-- 猫嘴（小 w 形） -->
-    <path
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:strokeColor="#FFD3E6"
-        android:pathData="M48,66 Q51,69 54,66 Q57,69 60,66" />
-
-    <!-- 四角星芒点缀（右上） -->
-    <path
-        android:fillColor="#FFD3E6"
-        android:pathData="M84,14 L86,19 L91,21 L86,23 L84,28 L82,23 L77,21 L82,19 Z" />
-    <!-- 小星芒（左下） -->
-    <path
-        android:fillColor="#80FFD3E6"
-        android:pathData="M28,80 L29.3,83 L32.3,84.3 L29.3,85.6 L28,88.6 L26.7,85.6 L23.7,84.3 L26.7,83 Z" />
+        android:strokeColor="#FFFFFF"
+        android:pathData="M41,58 L50.5,67.5 L68,46" />
 </vector>
