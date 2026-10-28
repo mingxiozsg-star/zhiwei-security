@@ -2,6 +2,7 @@ package com.zhiwei.security.ui
 
 import android.content.Intent
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +19,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -96,7 +99,7 @@ fun HomeScreen(navController: NavController) {
         ) {
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Hero 横幅：蓝色安全渐变（与图标同风格）
+            // Hero 横幅：蓝色安全渐变 + 防护状态环（开启/未开启）
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -106,53 +109,52 @@ fun HomeScreen(navController: NavController) {
                     )
                     .padding(20.dp)
             ) {
-                Column {
-                    Text("知微，守护你的安全", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date()) +
-                            "  ·  " + if (protectOn) "实时防护运行中" else "防护未开启",
-                        fontSize = 13.sp, color = Color(0xFFD8E2FF)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(Privilege.statusText, fontSize = 11.sp, color = Color(0xFFAEC4FF))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 安全状态圆环（品牌渐变）
-            Box(
-                modifier = Modifier
-                    .size(172.dp)
-                    .scale(if (protectOn) pulseScale else 1f)
-                    .clip(CircleShape)
-                    .background(
-                        if (protectOn)
-                            Brush.radialGradient(listOf(Color(0xFFFF6B9D), Color(0xFF7EC8E3)))
-                        else
-                            Brush.radialGradient(listOf(Color(0xFF3A3A55), Color(0xFF23233D)))
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(140.dp)
-                        .clip(CircleShape)
-                        .background(BgDark),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (protectOn) "🛡️" else "💤", fontSize = 36.sp)
-                        Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("知微，守护你的安全", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = if (protectOn) "防护中" else "未开启",
-                            color = if (protectOn) Pink else TextGray,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp
+                            SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date()) +
+                                "  ·  " + if (protectOn) "实时防护运行中" else "防护未开启",
+                            fontSize = 13.sp, color = Color(0xFFD8E2FF)
                         )
-                        if (protectOn) {
-                            Text(Privilege.statusText, fontSize = 10.sp, color = Ice)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(Privilege.statusText, fontSize = 11.sp, color = Color(0xFFAEC4FF))
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    // 状态环：开启 = 满圈粉环，未开启 = 1/4 圈灰白环
+                    Box(
+                        modifier = Modifier
+                            .size(88.dp)
+                            .scale(if (protectOn) pulseScale else 1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val sw = 7.dp.toPx()
+                            val r = (size.minDimension - sw) / 2f
+                            val tl = androidx.compose.ui.geometry.Offset(
+                                (size.width - r * 2f) / 2f, (size.height - r * 2f) / 2f
+                            )
+                            val sz = androidx.compose.ui.geometry.Size(r * 2f, r * 2f)
+                            drawArc(
+                                color = Color(0x40FFFFFF),
+                                startAngle = -90f, sweepAngle = 360f, useCenter = false,
+                                topLeft = tl, size = sz,
+                                style = Stroke(width = sw, cap = StrokeCap.Round)
+                            )
+                            drawArc(
+                                color = if (protectOn) Color(0xFFFF6B9D) else Color(0xB3FFFFFF),
+                                startAngle = -90f, sweepAngle = if (protectOn) 360f else 100f,
+                                useCenter = false, topLeft = tl, size = sz,
+                                style = Stroke(width = sw, cap = StrokeCap.Round)
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(if (protectOn) "🛡️" else "💤", fontSize = 22.sp)
+                            Text(
+                                text = if (protectOn) "防护中" else "未开启",
+                                color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp
+                            )
                         }
                     }
                 }

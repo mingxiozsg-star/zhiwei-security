@@ -58,6 +58,8 @@ class MainActivity : ComponentActivity() {
                         composable("permissions") { PermissionScreen(navController) }
                         composable("about") { AboutScreen(navController) }
                         composable("privilege") { PrivilegeScreen(navController) }
+                        composable("journal") { JournalScreen(navController) }
+                        composable("licenses") { LicenseScreen(navController) }
                         composable("auth") { AuthManageScreen(navController) }
                     }
                 }
