@@ -350,7 +350,9 @@ fun SettingsScreen(navController: NavController) {
                                     try {
                                         done = PermissionRevoker.revokeAll(context) { d, t, _ -> total = t }
                                     } catch (e: Throwable) { }
-                                    revokeStatus = "完成：从 $total 个应用收回 $done 项危险权限"
+                                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                        revokeStatus = "完成：从 $total 个应用收回 $done 项危险权限"
+                                    }
                                 }
                             }
                         ) {

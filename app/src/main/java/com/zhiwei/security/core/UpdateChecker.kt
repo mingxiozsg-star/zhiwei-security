@@ -74,17 +74,24 @@ object UpdateChecker {
     @Volatile var lastError: String? = null
         private set
 
-    /** GitHub 直连不稳定时的加速镜像（逐个回退） */
-    private fun mirrorUrls(url: String): List<String> = listOf(
-        url,
-        "https://ghfast.top/$url",
-        "https://gh-proxy.com/$url",
-        "https://mirror.ghproxy.com/$url"
+    /** 加速镜像前缀（按实测速度排序；直连兜底放最后） */
+    private val MIRROR_PREFIXES = listOf(
+        "https://ghfast.top/",
+        "https://ghproxy.net/",
+        "https://gh-proxy.com/",
+        "https://mirror.ghproxy.com/",
+        "" // 直连兜底
     )
 
+    /** 组装各镜像下载地址 */
+    private fun mirrorUrls(url: String): List<String> =
+        MIRROR_PREFIXES.map { it + url }
+
     /**
-     * 应用内下载 APK：多镜像回退 + 每镜像 2 次重试 + Range 断点续传
-     * 返回下载完成的文件，失败返回 null（失败原因写入 lastError）
+     * 应用内下载 APK：多镜像回退 + 慢速自动切换 + 断点续传。
+     * - 每个镜像最多尝试 2 次；某镜像 6 秒内平均速度过低（<20KB/s）→ 判为过慢，保留已下部分切换下一镜像；
+     * - 换镜像时若文件已有内容，带 Range 续传（服务端不支持则从头覆盖）；
+     * 返回下载完成的文件，失败返回 null（原因写入 lastError）。
      */
     fun download(context: Context, url: String, onProgress: (Int) -> Unit): File? {
         lastError = null
@@ -95,33 +102,44 @@ object UpdateChecker {
         for (mirror in mirrorUrls(url)) {
             for (attempt in 1..2) {
                 try {
-                    val existing = if (attempt > 1 && file.exists()) file.length() else 0L
+                    // 跨镜像保留已下载部分（断点续传）
+                    val existing = if (file.exists()) file.length() else 0L
                     val conn = URL(mirror).openConnection() as HttpURLConnection
-                    conn.connectTimeout = 20_000
-                    conn.readTimeout = 60_000
+                    conn.connectTimeout = 8_000
+                    conn.readTimeout = 30_000
                     conn.setRequestProperty("User-Agent", "zhiwei-security")
+                    conn.setRequestProperty("Accept-Encoding", "identity")
                     conn.instanceFollowRedirects = true
                     if (existing > 0) conn.setRequestProperty("Range", "bytes=$existing-")
 
                     val code = conn.responseCode
-                    if (code == 416) { file.delete(); continue }          // 范围失效，从头来
+                    if (code == 416) { file.delete(); continue }        // 范围失效，从头来
                     if (code != 200 && code != 206) {
                         errors.add("HTTP $code")
-                        break                                             // 此镜像不可用，换下一个
+                        break                                            // 此镜像不可用，换下一个
                     }
                     val append = code == 206 && existing > 0
                     val total = conn.contentLengthLong + (if (append) existing else 0L)
 
                     conn.inputStream.use { input ->
                         (if (append) FileOutputStream(file, true) else FileOutputStream(file)).use { output ->
-                            val buf = ByteArray(64 * 1024)
+                            val buf = ByteArray(256 * 1024)
                             var downloaded = if (append) existing else 0L
+                            var segStart = System.currentTimeMillis()
+                            var segBytes = 0L
                             while (true) {
                                 val n = input.read(buf)
                                 if (n < 0) break
                                 output.write(buf, 0, n)
                                 downloaded += n
-                                if (total > 0) onProgress(((downloaded * 100) / total).toInt().coerceAtMost(100))
+                                segBytes += n
+                                if (total > 0) onProgress(((downloaded * 100) / total).toInt().coerceIn(0, 100))
+                                // 速度监控：每 6 秒评估一次，均速 < 20KB/s 则放弃该镜像（保留已下部分）
+                                if (System.currentTimeMillis() - segStart > 6_000) {
+                                    if (segBytes < 120 * 1024) throw java.io.IOException("速度过慢 ${segBytes / 1024}KB/6s")
+                                    segStart = System.currentTimeMillis()
+                                    segBytes = 0L
+                                }
                             }
                             // 完整性校验：连接中途断开 read 会返回 -1，没下完的 APK 不能算成功
                             if (total > 0 && downloaded < total) {
@@ -132,7 +150,7 @@ object UpdateChecker {
                     onProgress(100)
                     return file
                 } catch (e: Throwable) {
-                    errors.add("${mirror.substringAfter("://").substringBefore("/")}: ${e.javaClass.simpleName}")
+                    errors.add("${mirror.substringAfter("://").substringBefore("/").ifEmpty { "direct" }}: ${e.javaClass.simpleName}")
                 }
             }
         }

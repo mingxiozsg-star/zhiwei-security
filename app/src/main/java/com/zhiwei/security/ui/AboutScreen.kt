@@ -90,8 +90,9 @@ fun AboutScreen(navController: NavController) {
                         checking = true
                         updateState = "正在下载 ${release.tag}…"
                         scope.launch {
+                            val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
                             val file = withContext(Dispatchers.IO) {
-                                UpdateChecker.download(context, url) { p -> downloadProgress = p }
+                                UpdateChecker.download(context, url) { p -> mainHandler.post { downloadProgress = p } }
                             }
                             downloadProgress = -1
                             checking = false

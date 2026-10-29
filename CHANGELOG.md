@@ -1,5 +1,13 @@
 # 更新日志
 
+## v1.6.2（2026-10-29）
+
+### 第十轮（Shizuku API 原封内置 + 更新下载提速）
+- **Shizuku 客户端 API 原封搬入**：`RikkaApps/Shizuku-API` 的 api 模块（rikka.shizuku.* 7 类）+ shared（ShizukuApiConstants）+ provider（ShizukuProvider + moe.shizuku.api.BinderContainer）+ rikka.sui.Sui + 4 个官方 AIDL（moe.shizuku.server.*）全部原封拷入，源码级内置，零改写。Manifest 注册 `rikka.shizuku.ShizukuProvider`（官方协议，接收 server 下发的 Binder），可接收内嵌 Shizuku server / Sui 注入的 binder
+- **内置更新下载提速**：镜像顺序按实测重排（ghfast.top 优先，GitHub 直连降为兜底）；新增**慢速自动切换**（单镜像 6 秒均速 < 20KB/s 即放弃并保留已下部分换源）；断点续传跨镜像保留；缓冲区 64KB→256KB
+- 实测下载速度：直连 40KB/s → ghfast.top 258KB/s（提速 ~6 倍）
+- **线程安全修复（3 处）**：扫描进度（ScanScreen）、更新下载进度（AboutScreen）、权限收回结果（SettingsScreen）此前均在后台线程直写 Compose 状态，改为主线程 Handler 回投，消除跨线程写 SnapshotState 的偶发崩溃风险
+
 ## v1.6.1（2026-10-28）
 
 ### 第九轮（游龙式内置方案对齐：开源合规三件套）

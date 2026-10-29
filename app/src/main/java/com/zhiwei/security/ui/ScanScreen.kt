@@ -138,12 +138,15 @@ fun ScanScreen(navController: NavController) {
                     scanComplete = false
                     threats = emptyList()
                     progress = 0
+                    val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
                     scope.launch {
                         val result = scanner.scanAllApps { p ->
-                            progress = p.current
-                            totalApps = p.total
-                            currentApp = p.currentApp
-                            threats = p.threats
+                            mainHandler.post {
+                                progress = p.current
+                                totalApps = p.total
+                                currentApp = p.currentApp
+                                threats = p.threats
+                            }
                         }
                         threats = result
                         isScanning = false

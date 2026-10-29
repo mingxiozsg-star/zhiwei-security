@@ -159,6 +159,19 @@
             android:enabled="true"
             android:exported="true" />
 
+        <!-- 内置 Shizuku 客户端 API：接收 server 下发的 Binder（官方协议，原封搬入） -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="com.zhiwei.security.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
+        <meta-data
+            android:name="moe.shizuku.client.V3_SUPPORT"
+            android:value="true" />
+
         <!-- 第三方授权申请弹窗 -->
         <activity
             android:name=".ui.AuthGrantActivity"

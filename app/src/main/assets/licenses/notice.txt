@@ -1,17 +1,31 @@
 知微安全 内置开源组件声明
 
-本产品内置以下开源项目及其依赖，它们提供了通过 ADB 或 Root 调用系统 API 的能力：
+本产品内置以下开源项目，它们提供通过 ADB 或 Root 调用系统 API 的能力：
 
 1. Shizuku（Apache License 2.0，版权归 RikkaApps）
-   用途：内嵌服务端（shizuku_server.dex + libshizuku.so 启动器，来自官方 v13.6.0 包）。
-   服务端二进制为官方原样，未做任何修改。
-   对应的源代码：https://github.com/RikkaApps/Shizuku
+   用途 A：内嵌服务端
+     —— shizuku_server.dex + starter64.so/starter32.so（libshizuku.so 启动器），
+        来自官方 v13.6.0 发布包，二进制原样内嵌，未做任何修改。
+   用途 B：内置客户端 API（源码级内置，原封搬入，未做修改）
+     —— rikka.shizuku.*（Shizuku / ShizukuBinderWrapper / ShizukuRemoteProcess /
+        ShizukuServiceConnection(s) / ShizukuSystemProperties / SystemServiceHelper /
+        ShizukuApiConstants）、rikka.sui.Sui、rikka.shizuku.ShizukuProvider、
+        moe.shizuku.api.BinderContainer，以及 moe.shizuku.server.* 四个官方 AIDL，
+        来自官方仓库 https://github.com/RikkaApps/Shizuku-API
+   源代码：https://github.com/RikkaApps/Shizuku 、 https://github.com/RikkaApps/Shizuku-API
    许可全文：见应用内「开源许可」页（Apache-2.0 全文）。
 
-2. 本机 ADB 通道（自研）
-   通过 Android 无线调试 / USB 调试在本应用内建立 shell(uid 2000) 提权通道，
-   与 Shizuku 服务端能力等价。为本产品原创实现，不依赖外部应用。
+2. Dhizuku（Apache License 2.0，版权归 iamr0s）
+   用途：内置客户端 API（com.rosan.dhizuku.api.*，含 Dhizuku / DhizukuBinderWrapper /
+        DhizukuClient / DhizukuRemoteProcess / DhizukuServiceConnection(s) /
+        DhizukuUserServiceArgs 等）与官方 AIDL（com.rosan.dhizuku.aidl.*），
+        源码级内置，原封搬入，未做修改。
+   源代码：https://github.com/iamr0s/Dhizuku
+
+3. 本机 ADB 通道（自研）
+   通过 Android 无线调试 / USB 调试在本应用内建立 shell(uid 2000) 提权通道。
+   为本产品原创实现，不依赖外部应用。
 
 已修改文件清单：
-- Shizuku 官方二进制：未修改（原样内嵌）。
-- 本产品自身代码：全部原创（Kotlin + Jetpack Compose），无第三方源码直接复制。
+- Shizuku / Dhizuku 官方源码与二进制：未修改（原样内置）。
+- 本产品自身代码（Kotlin + Jetpack Compose）：原创实现。
