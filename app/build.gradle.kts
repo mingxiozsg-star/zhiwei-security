@@ -100,10 +100,10 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    // Shizuku：API 已源码级内置（app/src/main/java/rikka/shizuku/*、rikka/sui/*、
+    // moe/shizuku/api/*，以及 aidl/moe/shizuku/server/*），
+    // 移除 dev.rikka.shizuku AAR 依赖，避免与内置源码类重复（D8 duplicate class）
 
-    // Shizuku
-    implementation("dev.rikka.shizuku:api:13.1.5")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
 
     // Material Icons Extended
     implementation("androidx.compose.material:material-icons-extended:1.7.6")
