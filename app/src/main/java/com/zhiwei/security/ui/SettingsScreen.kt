@@ -49,10 +49,12 @@ fun SettingsScreen(navController: NavController) {
 
     var intercept by remember { mutableStateOf(Prefs.interceptEnabled) }
     var autoKill by remember { mutableStateOf(Prefs.autoKillOnVirus) }
+    var builtinWl by remember { mutableStateOf(Prefs.builtinWhitelistEnabled) }
     var volumeGuard by remember { mutableStateOf(Prefs.volumeGuardEnabled) }
     var a11yGuard by remember { mutableStateOf(Prefs.a11yGuardEnabled) }
     var installScan by remember { mutableStateOf(Prefs.installScanEnabled) }
     var netGuard by remember { mutableStateOf(Prefs.netGuardEnabled) }
+    var blockAds by remember { mutableStateOf(Prefs.blockAdsEnabled) }
     var fileFlood by remember { mutableStateOf(Prefs.fileFloodEnabled) }
     var c2Filter by remember { mutableStateOf(Prefs.c2FilterEnabled) }
     var hideRecents by remember { mutableStateOf(Prefs.hideRecentsEnabled) }
@@ -121,8 +123,11 @@ fun SettingsScreen(navController: NavController) {
             // ===== 检测与拦截开关 =====
             SectionTitle("检测与拦截")
 
-            SwitchItem("扫描病毒自动斩杀", "扫描确认病毒（黑名单/特征命中）后自动冻结、回收权限并卸载，警报通知", autoKill) {
+            SwitchItem("扫描命中自动隔离", "确认病毒后仅冻结进程（可逆、不删数据），随后弹出确认窗由你决定「卸载 / 本次忽略 / 加入白名单」。任何情况下都不会自动卸载", autoKill) {
                 autoKill = it; Prefs.autoKillOnVirus = it
+            }
+            SwitchItem("内置知名应用白名单", "内置 ${com.zhiwei.security.core.KnownSafeApps.size()} 个主流应用与大型游戏包名，命中即免扫描、免评分、免隔离，杜绝误杀", builtinWl) {
+                builtinWl = it; Prefs.builtinWhitelistEnabled = it
             }
             SwitchItem("前台应用拦截", "黑名单/恶意应用进入前台时自动强杀并警告", intercept) {
                 intercept = it; Prefs.interceptEnabled = it
@@ -130,10 +135,10 @@ fun SettingsScreen(navController: NavController) {
             SwitchItem("音量键管控", "无障碍 3 连击（或兜底通道 2 秒内上下交替 5 次）斩杀全部第三方应用；检测软件恶意拉满音量", volumeGuard) {
                 volumeGuard = it; Prefs.volumeGuardEnabled = it
             }
-            SwitchItem("无障碍霸占管控", "检测霸屏锁机行为，自动斩杀并吊销其无障碍权限", a11yGuard) {
+            SwitchItem("无障碍霸占管控", "检测霸屏锁机行为，仅对确认病毒执行处置（内置白名单与高分应用自动豁免）", a11yGuard) {
                 a11yGuard = it; Prefs.a11yGuardEnabled = it
             }
-            SwitchItem("越权行为检测", "监控冻结/删除系统应用等高危操作，自动恢复并斩杀嫌疑应用", abuseDetect) {
+            SwitchItem("越权行为检测", "监控冻结/删除系统应用等高危操作，自动恢复并仅冻结隔离嫌疑应用（内置白名单豁免，不会误杀正常应用）", abuseDetect) {
                 abuseDetect = it; Prefs.abuseDetectEnabled = it
             }
             SwitchItem("系统权限自动收回", "新装应用的危险权限自动收回（权限白名单豁免）", autoRevoke) {
@@ -148,6 +153,38 @@ fun SettingsScreen(navController: NavController) {
             SwitchItem("C2 服务器封堵", "黑洞路由已知恶意服务器 IP，切断远控木马回连", c2Filter) {
                 c2Filter = it; Prefs.c2FilterEnabled = it
                 try { NetGuardService.restart(context) } catch (e: Throwable) { }
+            }
+            SwitchItem(
+                "域名过滤（广告/追踪/恶意域名）",
+                "DNS 层拦截：命中规则直接返回空地址，覆盖广告联盟、统计 SDK、钓鱼与隧道外连域名；" +
+                    "只劫持公网 DNS 查询，未命中查询真实转发，普通上网不受影响",
+                blockAds
+            ) { want ->
+                blockAds = want
+                Prefs.blockAdsEnabled = want
+                com.zhiwei.security.core.BlockAdsRules.load(context)
+                if (want && !netGuard) {
+                    // 域名过滤依赖 VPN 通道，未开则一并申请
+                    val intent = VpnService.prepare(context)
+                    if (intent != null) vpnLauncher.launch(intent)
+                    else {
+                        Prefs.netGuardEnabled = true; netGuard = true
+                        NetGuardService.start(context)
+                    }
+                } else {
+                    try { NetGuardService.restart(context) } catch (e: Throwable) { }
+                }
+            }
+            if (blockAds) {
+                Text(
+                    "规则 ${com.zhiwei.security.core.BlockAdsRules.ruleCount} 条 · 本次已拦截 " +
+                        "${Prefs.dnsBlockedCount} 次" +
+                        (if (com.zhiwei.security.core.BlockAdsRules.lastBlockedDomain.isNotEmpty())
+                            " · 最近：${com.zhiwei.security.core.BlockAdsRules.lastBlockedDomain}" else ""),
+                    fontSize = 12.sp,
+                    color = Color(0xFF7EC8E3),
+                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                )
             }
             SwitchItem("本地离线病毒扫描", "LovelaceAV 引擎二级校验（特征库外置，缺失时自动降级）", localAv) {
                 localAv = it; Prefs.localAvEnabled = it

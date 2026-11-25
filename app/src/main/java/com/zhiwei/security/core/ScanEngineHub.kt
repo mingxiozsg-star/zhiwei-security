@@ -53,6 +53,9 @@ object ScanEngineHub {
      * 引擎异常只跳过该引擎，不影响整体扫描。
      */
     fun scanWithExternalEngines(context: Context, pkg: PackageInfo): VirusDb.ScanResult? {
+        // 内置可信库 / 用户白名单：外部引擎一律不跑（防特征串误命中大型游戏资源）
+        if (KnownSafeApps.isTrusted(pkg.packageName)) return null
+        if (pkg.packageName in Prefs.whitelist) return null
         var best: VirusDb.ScanResult? = null
         for (engine in engines) {
             val r = try {

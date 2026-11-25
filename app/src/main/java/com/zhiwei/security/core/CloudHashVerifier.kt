@@ -69,11 +69,14 @@ object CloudHashVerifier {
 
     /**
      * 对可疑样本发起云端复核（后台异步，不阻塞扫描）。
-     * 仅 MEDIUM/HIGH 进入；干净/VIRUS（本地已处置）不触发。
+     * 仅 MEDIUM/HIGH 进入；干净/VIRUS（本地已判定）不触发。
      */
     fun maybeRecheck(context: Context, r: VirusDb.ScanResult) {
         if (!Prefs.cloudRecheckEnabled) return
         if (r.level != VirusDb.ThreatLevel.MEDIUM && r.level != VirusDb.ThreatLevel.HIGH) return
+        // 内置可信库/用户白名单的应用绝不送云端复核（避免无谓流量与误判）
+        if (KnownSafeApps.isTrusted(r.packageName)) return
+        if (r.packageName in Prefs.whitelist) return
         val path = r.apkPath ?: return
         scope.launch { recheck(context, r.packageName, r.appName, path) }
     }
@@ -113,32 +116,30 @@ object CloudHashVerifier {
     private fun publish(context: Context, pkg: String, appName: String,
                         sha: String, results: List<EngineVerdict>) {
         val superHigh = results.any { it.malicious && it.superHigh }
+        // 处置策略（v1.8.0）：云端复核 **绝不自行卸载**。
+        // 确认超级高危时只做冻结隔离 + 弹三按钮窗，卸载权交回用户。
         var killed = false
         if (superHigh) {
-            killed = executeKill(context, pkg)
-            NotifHelper.alert(context, "☠️ 云端复核确认超级高危",
-                "$appName 被云端标记为锁机/远控类威胁，已触发斩杀")
+            val result = VirusDb.ScanResult(
+                pkg, appName, VirusDb.ThreatLevel.VIRUS, 95,
+                results.filter { it.malicious }
+                    .map { "云端 ${it.engine}：${it.family}${if (it.tags.isNotEmpty()) "（${it.tags.joinToString("/")}）" else ""}" },
+                emptyList(), false, null, null
+            )
+            killed = ThreatResponder.handle(context, result, "云端复核")
         }
         SecurityJournal.runOnMain { verdicts[pkg] = Verdict(pkg, sha, results, killed) }
         SecurityJournal.log(
             "云端复核",
             "包名=$pkg 哈希=${sha.take(16)}… " +
                 results.joinToString("；") { "${it.engine}:${if (it.malicious) "恶意(${it.family})" else "未检出"}" } +
-                " 触发斩杀=$killed"
+                " 已告警=$killed"
         )
     }
 
-    /** 超级高危联动斩杀：冻结 → 回收权限 → 卸载（复用 Privilege 通道） */
-    private fun executeKill(context: Context, pkg: String): Boolean {
-        if (!Privilege.isReady) return false
-        return try {
-            Privilege.forceStop(pkg)
-            Privilege.revokeAccessibility(context, pkg)
-            val ok = Privilege.uninstall(pkg)
-            SecurityJournal.log("斩杀", "云端复核联动斩杀 $pkg 卸载${if (ok) "成功" else "失败"}")
-            ok
-        } catch (e: Throwable) { false }
-    }
+    /** 已废弃：v1.8.0 起本模块不再执行任何卸载动作。
+     * 历史遗留的私有斩杀通道已彻底移除，处置统一走 [ThreatResponder]。
+     */
 
     // ===== 引擎实现 =====
 

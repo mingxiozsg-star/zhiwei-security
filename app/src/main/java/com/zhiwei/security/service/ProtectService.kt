@@ -30,6 +30,8 @@ import kotlin.concurrent.thread
 import com.zhiwei.security.core.Prefs
 import com.zhiwei.security.core.Privilege
 import com.zhiwei.security.core.VirusDb
+import com.zhiwei.security.core.KnownSafeApps
+import com.zhiwei.security.core.ThreatResponder
 import com.zhiwei.security.ui.ShieldWarnActivity
 
 /**
@@ -197,6 +199,7 @@ private var wakeLock: PowerManager.WakeLock? = null
                 floodCooldownAt = now
                 val suspect = getForegroundPackage()?.takeIf {
                     it != packageName && it !in Prefs.whitelist &&
+                        !KnownSafeApps.isTrusted(it) &&
                         !com.zhiwei.security.core.PanicKill.isSystemApp(this, it)
                 }
                 val msg = "目录 ${hit.key} 1 分钟内新增 ${hit.value - (prev[hit.key] ?: 0)} 个文件" +
@@ -222,8 +225,10 @@ private var wakeLock: PowerManager.WakeLock? = null
                         suspect ?: violation.pkg,
                         "越权行为：系统组件 ${violation.pkg} ${violation.type.label}$restoredTip$suspectTip"
                     )
-                    // 嫌疑应用直接斩杀
-                    if (suspect != null && Privilege.isReady) {
+                    // 嫌疑应用只做冻结隔离，且可信库应用一律放过（防止游戏被误杀）
+                    if (suspect != null && Privilege.isReady &&
+                        suspect !in Prefs.whitelist && !KnownSafeApps.isTrusted(suspect)
+                    ) {
                         Privilege.forceStop(suspect)
                     }
                 }
@@ -355,6 +360,7 @@ private var wakeLock: PowerManager.WakeLock? = null
         if (foreground == packageName) return // 自己不管
 
         val shouldBlock = foreground !in Prefs.whitelist &&
+                !KnownSafeApps.isTrusted(foreground) &&
                 (foreground in Prefs.blacklist || foreground in VirusDb.maliciousPackages ||
                         VirusDb.maliciousPackagePrefixes.any { foreground.startsWith(it) })
         if (!shouldBlock) return
@@ -428,6 +434,11 @@ private var wakeLock: PowerManager.WakeLock? = null
     private fun checkNewApp(pkg: String) {
         if (!Prefs.installScanEnabled) return
         if (pkg in Prefs.whitelist) return
+        // 内置知名应用/游戏白名单：不扫描、不告警、不隔离，仅记一笔日志
+        if (KnownSafeApps.isTrusted(pkg)) {
+            SecurityJournal.log("安装监控", "$pkg 命中内置可信库，跳过检测")
+            return
+        }
 
         // ===== 静默安装检测：读取安装来源 =====
         val installer = try {
@@ -459,38 +470,14 @@ private var wakeLock: PowerManager.WakeLock? = null
         }
         val result = scanner.analyzePackageName(pkg) ?: return
 
-        // ===== 病毒命中：直接删除（提权通道），失败则弹卸载 =====
-        if (result.level == VirusDb.ThreatLevel.VIRUS) {
-            thread {
-                var removed = false
-                if (Privilege.isReady) {
-                    try {
-                        val r = Privilege.exec("pm uninstall $pkg")
-                        removed = r.first == 0 && !r.second.contains("Failure", true)
-                    } catch (e: Throwable) { }
-                }
-                if (removed) {
-                    NotifHelper.alert(this, "🦠 病毒应用已自动删除",
-                        "$appLabel（$pkg）命中病毒库「${result.reasons.firstOrNull() ?: ""}」，已通过提权通道直接卸载")
-                } else {
-                    // 无提权 → 通知点击跳系统卸载页
-                    val uninstall = Intent(Intent.ACTION_DELETE).apply {
-                        data = android.net.Uri.parse("package:$pkg")
-                    }
-                    NotifHelper.alert(this, "🦠 检测到病毒应用",
-                        "$appLabel（$pkg）命中病毒库，点击此通知立即卸载",
-                        uninstall)
-                    showThreatWarning(pkg, "检测到病毒应用：${result.reasons.firstOrNull() ?: "命中病毒库"}")
-                }
+        // ===== 威胁判定：绝不自动卸载，统一交给 ThreatResponder 弹三按钮窗 =====
+        if (result.level == VirusDb.ThreatLevel.VIRUS ||
+            result.level == VirusDb.ThreatLevel.HIGH) {
+            val shown = ThreatResponder.handle(this, result, "新装拦截")
+            if (!shown) {
+                // 冷却窗口内已弹过，不重复骚扰
+                SecurityJournal.log("安装监控", "$pkg 命中 ${result.level.label}，弹窗冷却中")
             }
-            return
-        }
-
-        if (result.level == VirusDb.ThreatLevel.HIGH) {
-            showThreatWarning(
-                pkg,
-                "新安装应用存在风险：${result.reasons.firstOrNull() ?: "权限异常"}（评分 ${result.score}）"
-            )
         }
     }
 
@@ -501,9 +488,14 @@ private var wakeLock: PowerManager.WakeLock? = null
 
     // ========== 警告 ==========
 
+    /**
+     * 弹三按钮确认窗（ProtectService 内所有告警的唯一出口）。
+     * 语义：仅提示 + 等用户选择，绝不自动卸载。
+     */
     private fun showThreatWarning(pkg: String, reason: String) {
         if (pkg in Prefs.whitelist) return
-
+        // 内置可信库免打扰：正常应用/游戏不弹任何告警
+        if (KnownSafeApps.isTrusted(pkg)) return
         val appName = try {
             val pm = packageManager
             val appInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -514,11 +506,14 @@ private var wakeLock: PowerManager.WakeLock? = null
             }
             appInfo.loadLabel(pm).toString()
         } catch (e: Exception) { pkg }
-
         val warnIntent = Intent(this, ShieldWarnActivity::class.java).apply {
             putExtra("pkg", pkg)
             putExtra("app_name", appName)
             putExtra("reason", reason)
+            // 只有明确命中恶意名单/特征的才算 virus 语气，其余按高风险提示
+            putExtra("is_virus", pkg in VirusDb.maliciousPackages ||
+                pkg in Prefs.blacklist ||
+                VirusDb.maliciousPackagePrefixes.any { pkg.startsWith(it) })
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 

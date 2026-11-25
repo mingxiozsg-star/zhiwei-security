@@ -51,6 +51,8 @@ class AppScanner(private val context: Context) {
 
             // 用户白名单跳过
             if (pkg.packageName in Prefs.whitelist) return@forEachIndexed
+            // 内置知名应用/游戏白名单跳过（防误杀底座）
+            if (KnownSafeApps.isTrusted(pkg.packageName)) return@forEachIndexed
 
             val result = ScanEngineHub.merge(
                 analyzePackage(pkg),
@@ -58,28 +60,9 @@ class AppScanner(private val context: Context) {
             ) ?: return@forEachIndexed
             // 可疑样本触发云端哈希复核（后台异步，干净/已判病毒不触发）
             CloudHashVerifier.maybeRecheck(context, result)
-            // 确认病毒 → 自动斩杀（冻结→回收无障碍/管理员→卸载+警报），开关默认开
-            if (result.level == VirusDb.ThreatLevel.VIRUS && Prefs.autoKillOnVirus &&
-                result.packageName !in Prefs.whitelist) {
-                val pkgName = result.packageName
-                val appLabel = result.appName
-                kotlin.concurrent.thread(isDaemon = true) {
-                    try {
-                        if (Privilege.isReady) {
-                            Privilege.forceStop(pkgName)
-                            Privilege.revokeAccessibility(context, pkgName)
-                            val ok = Privilege.uninstall(pkgName)
-                            NotifHelper.alert(context, "☠️ 扫描命中病毒，已斩杀",
-                                "$appLabel 判定为病毒，已自动处置（卸载${if (ok) "成功" else "失败"}）")
-                            SecurityJournal.log("斩杀", "扫描联动斩杀 $pkgName 卸载${if (ok) "成功" else "失败"}")
-                        } else {
-                            Privilege.exec("am force-stop $pkgName")
-                            NotifHelper.alert(context, "⚠️ 扫描命中病毒",
-                                "$appLabel 判定为病毒；无提权通道，仅做后台清理，请连接本机 ADB/Root 后重扫以彻底卸载")
-                            SecurityJournal.log("斩杀", "扫描命中 $pkgName 但无提权，未卸载")
-                        }
-                    } catch (e: Throwable) { }
-                }
+            // 确认威胁 → 统一走 ThreatResponder（只隔离 + 弹三按钮窗，绝不卸载）
+            if (result.level == VirusDb.ThreatLevel.VIRUS) {
+                ThreatResponder.handle(context, result, "全盘扫描")
             }
             // 只有中风险及以上才进威胁列表
             if (result.level == VirusDb.ThreatLevel.MEDIUM ||
@@ -149,7 +132,8 @@ class AppScanner(private val context: Context) {
         }
 
         // 2.5 恶意应用名关键词（刷钻/锁机/外挂类名称，正常应用不会用）
-        if (!isSystem) {
+        //     内置可信包名豁免：避免「攻略/助手」类正常应用被名称关键词带走
+        if (!isSystem && !KnownSafeApps.isTrusted(pkg.packageName)) {
             val hitKw = VirusDb.maliciousNameKeywords.firstOrNull { appName.contains(it) }
             if (hitKw != null) {
                 return VirusDb.ScanResult(
@@ -162,6 +146,9 @@ class AppScanner(private val context: Context) {
 
         // 3. 系统应用到此为止——不再按权限评分，避免误报
         if (isSystem) return null
+
+        // 3.1 内置知名应用/游戏白名单：不参与权限评分（精确黑名单已在最前判定）
+        if (KnownSafeApps.isTrusted(pkg.packageName)) return null
 
         // 3.2 风险应用名单（广告/猎手木马家族，判 HIGH 不判 VIRUS）
         if (pkg.packageName in VirusDb.suspiciousPackages) {
@@ -204,8 +191,11 @@ class AppScanner(private val context: Context) {
 
         score = score.coerceAtMost(100)
 
+        // 关键策略（v1.8.0 误杀修复）：
+        // 纯权限评分 **最高只能到 HIGH**，永不判 VIRUS。
+        // 理由：主流游戏/工具本身就会申请一堆高危权限，评分模型无法区分善意与恶意；
+        // VIRUS 只允许由「精确黑名单 / 恶意前缀 / 恶意落地文件名 / 恶意签名 / 恶意名称关键词」产生。
         val level = when {
-            score >= 70 -> VirusDb.ThreatLevel.VIRUS
             score >= 50 -> VirusDb.ThreatLevel.HIGH
             score >= 30 -> VirusDb.ThreatLevel.MEDIUM
             score >= 15 -> VirusDb.ThreatLevel.LOW

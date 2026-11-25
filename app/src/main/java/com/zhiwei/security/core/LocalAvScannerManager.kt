@@ -185,30 +185,19 @@ object LocalAvScannerManager : ScanEngine {
 
         SecurityJournal.runOnMain { lastMatches[pkg.packageName] = matches }
         val worst = matches.maxBy { severityRank(it.severity) }
+        val reasons = matches.map { "[${displayName}] ${it.name}：${it.detail}" }
+
+        // 处置策略（v1.8.0）：
+        // 本引擎 **纯粹只做判定，不产生任何副作用**（不冻结、不卸载、不弹窗）。
+        // 所有处置统一由调用方交给 ThreatResponder，避免一次命中被多处重复处理。
         val level = when (worst.severity) {
             "SUPER" -> VirusDb.ThreatLevel.VIRUS
             "HIGH" -> VirusDb.ThreatLevel.HIGH
             else -> VirusDb.ThreatLevel.MEDIUM
         }
-        val reasons = matches.map { "[${displayName}] ${it.name}：${it.detail}" }
-
-        // 超级高危 → 直接联动斩杀状态机：冻结 → 回收无障碍/管理员 → 卸载 + 警报
-        var killed = false
-        if (worst.severity == "SUPER" && Privilege.isReady) {
-            kotlin.concurrent.thread(isDaemon = true) {
-                try {
-                    Privilege.forceStop(pkg.packageName)
-                    Privilege.revokeAccessibility(context, pkg.packageName)
-                    killed = Privilege.uninstall(pkg.packageName)
-                    NotifHelper.alert(context, "☠️ 本地AV确认超级高危",
-                        "$appName 命中「${worst.name}」，已执行斩杀")
-                    SecurityJournal.log("斩杀", "本地AV联动斩杀 ${pkg.packageName} 卸载${if (killed) "成功" else "失败"}")
-                } catch (e: Throwable) { }
-            }
-        }
         SecurityJournal.log(
             "本地AV",
-            "命中 ${pkg.packageName} 规则=${matches.joinToString(",") { it.name }} 判定=${level.label} 斩杀=${worst.severity == "SUPER"}"
+            "命中 ${pkg.packageName} 规则=${matches.joinToString(",") { it.name }} 判定=${level.label}"
         )
         return VirusDb.ScanResult(
             pkg.packageName, appName, level,

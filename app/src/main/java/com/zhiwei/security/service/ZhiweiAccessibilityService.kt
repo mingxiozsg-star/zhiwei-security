@@ -9,6 +9,7 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
 import com.zhiwei.security.core.AppScanner
+import com.zhiwei.security.core.KnownSafeApps
 import com.zhiwei.security.core.PanicKill
 import com.zhiwei.security.core.Prefs
 import com.zhiwei.security.core.Privilege
@@ -262,10 +263,18 @@ class ZhiweiAccessibilityService : AccessibilityService() {
         val longForeground = now - foregroundSince > HIJACK_NO_INPUT_TIMEOUT
 
         if (noInput && longForeground) {
+            // 内置可信库直接豁免：大型游戏看剧情/挂机不动 15 秒是常态，
+            // 若按霸屏规则处理会把正常游戏当锁机斩杀，必须提前放行。
+            if (KnownSafeApps.isTrusted(pkg)) {
+                foregroundSince = now
+                lastUserInteractionAt = now
+                return
+            }
             // 检查该应用是否有锁机高危特征
             val risk = AppScanner(this).analyzePackageName(pkg) ?: return
-            if (risk.level == com.zhiwei.security.core.VirusDb.ThreatLevel.HIGH ||
-                risk.level == com.zhiwei.security.core.VirusDb.ThreatLevel.VIRUS) {
+            // 只对 **确认病毒**（恶意名单/特征命中）执行霸屏斩杀；
+            // 权限评分得出的 HIGH 不再作为斩杀依据，避免误杀正常应用。
+            if (risk.level == com.zhiwei.security.core.VirusDb.ThreatLevel.VIRUS) {
                 thread {
                     // 吊销其无障碍权限
                     if (Privilege.isReady) {

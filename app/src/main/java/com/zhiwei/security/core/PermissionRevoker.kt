@@ -50,6 +50,8 @@ object PermissionRevoker {
         if (!Privilege.isReady) return 0
         if (PanicKill.isSystemApp(context, pkg)) return 0
         if (pkg in Prefs.whitelist || pkg in Prefs.permWhitelist) return 0
+        // 内置知名应用/游戏白名单：绝不自动收权限（大型游戏缺权限会直接闪退）
+        if (KnownSafeApps.isTrusted(pkg)) return 0
         if (pkg == context.packageName) return 0
 
         var count = 0
@@ -91,7 +93,8 @@ object PermissionRevoker {
                 val sys = it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
                 !sys && it.packageName != context.packageName &&
                         it.packageName !in Prefs.whitelist &&
-                        it.packageName !in Prefs.permWhitelist
+                        it.packageName !in Prefs.permWhitelist &&
+                        !KnownSafeApps.isTrusted(it.packageName)
             }
         var total = 0
         pkgs.forEachIndexed { i, ai ->

@@ -275,7 +275,7 @@ fun ThreatCard(threat: VirusDb.ScanResult) {
                             )
                         }
                         if (v.triggeredKill) {
-                            Text("⚔️ 已触发斩杀", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF9C27B0))
+                            Text("🔔 已弹窗待你决策（未卸载）", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF9800))
                         }
                     }
                 }

@@ -67,6 +67,46 @@ object NotifHelper {
         post(context, title, text, tapIntent, true)
     }
 
+    /**
+     * 强制弹出式告警（v1.8.0）：全屏意图 + 直接 startActivity 双通道。
+     * 用于「必须让用户当面选三按钮」的场景（确认病毒），
+     * 避免只发一条通知、用户没点就被当成"已处理"。
+     */
+    fun alertPopup(context: Context, title: String, text: String, tapIntent: Intent) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+                    android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                // 无通知权限时直接尝试 Activity 通道
+                runCatching { context.startActivity(tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                return
+            }
+            ensureChannel(context)
+            val pi = PendingIntent.getActivity(
+                context, (seq++).and(0x7FFFFFFF), tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            val n = NotificationCompat.Builder(context, CHANNEL_ALERT)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+                .setFullScreenIntent(pi, true)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .build()
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.notify((seq++).and(0x7FFFFFFF), n)
+            // 兜底：能直接弹就直接弹（系统限制时静默失败，全屏通知已覆盖）
+            runCatching {
+                context.startActivity(tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+        } catch (e: Throwable) { }
+    }
+
     private fun post(context: Context, title: String, text: String, tapIntent: Intent?, high: Boolean) {
         try {
             // Android 13+ 无通知权限时静默放弃（权限申请在 UI 层引导）

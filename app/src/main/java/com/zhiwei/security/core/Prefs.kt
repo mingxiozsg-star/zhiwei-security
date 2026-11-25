@@ -63,10 +63,28 @@ object Prefs {
         get() = sp.getBoolean("sw_volume_guard", true)
         set(v) = sp.edit().putBoolean("sw_volume_guard", v).apply()
 
-    /** 扫描确认病毒后自动斩杀（冻结→回收权限→卸载），默认开 */
+    /**
+     * 扫描确认病毒后自动处置。
+     * 语义已收紧：**只做冻结隔离（force-stop + suspend），绝不卸载**。
+     * 卸载动作一律由用户在弹窗上点「卸载」后才执行。
+     * 默认开（隔离可逆、无损），历史键名保持不变以兼容旧配置。
+     */
     var autoKillOnVirus: Boolean
         get() = sp.getBoolean("sw_auto_kill_virus", true)
         set(v) = sp.edit().putBoolean("sw_auto_kill_virus", v).apply()
+
+    /**
+     * 内置知名应用/游戏白名单（防误杀）。
+     * 开启时命中库内的包名不参与权限评分与特征规则，默认开。
+     */
+    var builtinWhitelistEnabled: Boolean
+        get() = sp.getBoolean("sw_builtin_whitelist", true)
+        set(v) = sp.edit().putBoolean("sw_builtin_whitelist", v).apply()
+
+    /** 已彻底卸载（用户确认）的包名，用于扫描列表过滤残留 */
+    var userConfirmedUninstalled: Set<String>
+        get() = sp.getStringSet("user_confirmed_uninstalled", emptySet()) ?: emptySet()
+        set(v) = sp.edit().putStringSet("user_confirmed_uninstalled", v).apply()
 
     /** 无障碍霸占管控 */
     var a11yGuardEnabled: Boolean
@@ -115,6 +133,16 @@ object Prefs {
     var c2FilterEnabled: Boolean
         get() = sp.getBoolean("sw_c2_filter", true)
         set(v) = sp.edit().putBoolean("sw_c2_filter", v).apply()
+
+    /** 域名级广告/追踪/恶意域名拦截（DNS 过滤，全局生效） */
+    var blockAdsEnabled: Boolean
+        get() = sp.getBoolean("sw_block_ads", false)
+        set(v) = sp.edit().putBoolean("sw_block_ads", v).apply()
+
+    /** 域名过滤累计拦截次数 */
+    var dnsBlockedCount: Long
+        get() = sp.getLong("dns_blocked_count", 0L)
+        set(v) = sp.edit().putLong("dns_blocked_count", v).apply()
 
     /** 系统权限自动收回（收回非白名单应用的危险权限） */
     var autoRevokeEnabled: Boolean
