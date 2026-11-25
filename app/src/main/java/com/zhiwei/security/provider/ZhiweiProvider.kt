@@ -92,7 +92,7 @@ class ZhiweiProvider : ContentProvider() {
         )
         val c = MatrixCursor(cols)
         c.addRow(
-            arrayOf(
+            arrayOf<Any>(
                 if (Prefs.builtinPrivilegeEnabled) 1 else 0,
                 if (com.zhiwei.security.core.Privilege.isReady) 1 else 0,
                 BuiltinPrivilege.runMode,
