@@ -212,4 +212,30 @@ object Prefs {
     fun removeFromBlacklist(pkg: String) { blacklist = blacklist - pkg }
     fun addToWhitelist(pkg: String) { whitelist = whitelist + pkg }
     fun removeFromWhitelist(pkg: String) { whitelist = whitelist - pkg }
+
+    // ===== 内置特权服务（对外授权宿主） =====
+    /** 对外授权总开关：关闭后 Provider 不再下发 Binder，第三方无法发现/申请 */
+    var builtinPrivilegeEnabled: Boolean
+        get() = sp.getBoolean("bp_enabled", false)
+        set(v) = sp.edit().putBoolean("bp_enabled", v).apply()
+
+    /** 开机自动拉起特权服务（提权通道就绪时） */
+    var builtinAutoStart: Boolean
+        get() = sp.getBoolean("bp_autostart", true)
+        set(v) = sp.edit().putBoolean("bp_autostart", v).apply()
+
+    /** 授权弹窗是否展示第三方自报的申请理由 */
+    var authShowReason: Boolean
+        get() = sp.getBoolean("bp_show_reason", true)
+        set(v) = sp.edit().putBoolean("bp_show_reason", v).apply()
+
+    /** 未经确认即拒绝：弹窗超时/后台不弹时默认拒绝（安全默认） */
+    var authDefaultDeny: Boolean
+        get() = sp.getBoolean("bp_default_deny", true)
+        set(v) = sp.edit().putBoolean("bp_default_deny", v).apply()
+
+    /** 服务端最近一次启动时间（UI 展示运行时长） */
+    var builtinStartedAt: Long
+        get() = sp.getLong("bp_started_at", 0L)
+        set(v) = sp.edit().putLong("bp_started_at", v).apply()
 }

@@ -284,17 +284,22 @@ fun HomeScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 HomeTile("🛡️", "防护设置", Modifier.weight(1f)) { navController.navigate("protect") }
+                HomeTile("⚡", "内置特权", Modifier.weight(1f)) { navController.navigate("builtin") }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 HomeTile("🔑", "授权管理", Modifier.weight(1f)) { navController.navigate("auth") }
+                HomeTile("🚀", "提权中心", Modifier.weight(1f)) { navController.navigate("privilege") }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HomeTile("⚡", "提权中心", Modifier.weight(1f)) { navController.navigate("privilege") }
                 HomeTile("🔒", "设备管理员", Modifier.weight(1f)) { navController.navigate("devadmin") }
+                HomeTile("📜", "安全日志", Modifier.weight(1f)) { navController.navigate("journal") }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HomeTile("📜", "安全日志", Modifier.weight(1f)) { navController.navigate("journal") }
                 HomeTile("ℹ️", "关于我们", Modifier.weight(1f)) { navController.navigate("about") }
+                Spacer(Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(20.dp))

@@ -68,6 +68,7 @@ class AuthGrantActivity : ComponentActivity() {
         if (p == null) { finish(); return }
         showing = true
         val pkg = p.first
+        val reason = AuthDb.requestReason(pkg)
         val appLabel = try {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
         } catch (e: Exception) { pkg }
@@ -103,6 +104,21 @@ class AuthGrantActivity : ComponentActivity() {
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Medium
                                 )
+                                Spacer(Modifier.height(8.dp))
+                                if (reason.isNotEmpty()) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = Color(0xFF0B0B14)
+                                    ) {
+                                        Text(
+                                            "申请理由：$reason",
+                                            color = Color(0xFF7EC8E3),
+                                            fontSize = 12.sp,
+                                            modifier = Modifier.padding(10.dp)
+                                        )
+                                    }
+                                }
                                 Spacer(Modifier.height(8.dp))
                                 Text(
                                     "申请使用知微特权服务\n授权后可通过知微的提权通道执行特权命令\n危险命令仍会逐条弹窗拦截",

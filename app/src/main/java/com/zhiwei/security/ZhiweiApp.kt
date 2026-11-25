@@ -29,6 +29,8 @@ class ZhiweiApp : Application() {
         com.zhiwei.security.core.ScanEngineHub.register(com.zhiwei.security.core.AvlSdkEngine())
         com.zhiwei.security.core.SecurityJournal.init(this)
         com.zhiwei.security.core.LocalAvScannerManager.init(this)
+        // 内置特权：曾开启则冷启动恢复对外服务（Binder 由 ZhiweiProvider 暴露）
+        com.zhiwei.security.core.BuiltinPrivilege.restoreIfEnabled(this)
         com.zhiwei.security.core.ScanEngineHub.register(com.zhiwei.security.core.LocalAvScannerManager)
         createNotificationChannels()
     }

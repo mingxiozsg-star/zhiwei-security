@@ -25,6 +25,7 @@ import android.widget.Toast
 import com.zhiwei.security.core.AdbPairing
 import com.zhiwei.security.core.AdbShell
 import com.zhiwei.security.core.AuthDb
+import com.zhiwei.security.core.BuiltinPrivilege
 import com.zhiwei.security.core.DhizukuManager
 import com.zhiwei.security.core.PanicKill
 import com.zhiwei.security.core.PermissionRevoker
@@ -342,6 +343,38 @@ fun SettingsScreen(navController: NavController) {
                     color = Color(0xFF7EC8E3),
                     modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
                 )
+            }
+            // ===== 内置特权（对外授权宿主） =====
+            SectionTitle("内置特权")
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+                onClick = { navController.navigate("builtin") }
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("内置特权服务", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "对外向其他应用开放特权：它们能发现知微、申请授权、执行命令，" +
+                                "全程弹窗确认并可追溯",
+                            fontSize = 13.sp, color = Color(0xFF9090A0), lineHeight = 18.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            if (Prefs.builtinPrivilegeEnabled)
+                                "● 已开启 · ${BuiltinPrivilege.runMode} · 已授权 ${AuthDb.grantedApps.size} 个应用"
+                            else "○ 未开启",
+                            fontSize = 13.sp,
+                            color = if (Prefs.builtinPrivilegeEnabled) Color(0xFF66D9A0) else Color(0xFF9090A0)
+                        )
+                    }
+                    Text("›", fontSize = 28.sp, color = Color(0xFFFF6B9D))
+                }
             }
             // ===== 提权中心入口 =====
             SectionTitle("提权通道")

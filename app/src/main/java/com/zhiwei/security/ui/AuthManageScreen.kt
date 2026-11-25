@@ -223,6 +223,16 @@ fun AuthManageScreen(navController: NavController) {
                                     Text(app.label, color = Color.White, fontSize = 15.sp,
                                         fontWeight = FontWeight.Medium, maxLines = 1)
                                     Text(app.pkg, color = Color(0xFF9090A0), fontSize = 11.sp, maxLines = 1)
+                                    if (isGranted) {
+                                        val reason = AuthDb.requestReason(app.pkg)
+                                        val calls = AuthDb.callCount(app.pkg)
+                                        Text(
+                                            "已授权" + (if (calls > 0) " · 调用 ${calls} 次" else "") +
+                                                (if (reason.isNotEmpty()) " · 理由：$reason" else ""),
+                                            color = Color(0xFF7EC8E3), fontSize = 10.sp,
+                                            maxLines = 2, lineHeight = 14.sp
+                                        )
+                                    }
                                 }
                                 Switch(
                                     checked = isGranted,

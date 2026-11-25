@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
                         composable("licenses") { LicenseScreen(navController) }
                         composable("auth") { AuthManageScreen(navController) }
                         composable("devadmin") { DeviceAdminScreen(navController) }
+                        composable("builtin") { BuiltinPrivilegeScreen(navController) }
                     }
                 }
             }
