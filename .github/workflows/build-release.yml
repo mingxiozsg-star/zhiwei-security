@@ -1,34 +1,28 @@
 name: Build Release APK
-
 on:
   push:
     branches: [ master ]
     tags: [ 'v*' ]
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-
       - name: Build Release APK
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: Upload APK
+      - name: Upload APK (artifact)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zhiwei-security-release
@@ -36,13 +30,27 @@ jobs:
             app/build/outputs/apk/normal/release/app-normal-release.apk
             app/build/outputs/apk/system/release/app-system-release.apk
 
+      # 直接用 GitHub REST API 发布，避开第三方 action 的版本兼容风险
       - name: Create Release
-        uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
-        with:
-          body_path: CHANGELOG.md
-          files: |
-            app/build/outputs/apk/normal/release/app-normal-release.apk
-            app/build/outputs/apk/system/release/app-system-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          API="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          REL=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" "$API/releases/tags/$TAG" || true)
+          ID=$(printf '%s' "$REL" | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d.get("id",""))' 2>/dev/null || true)
+          if [ -z "$ID" ]; then
+            PAYLOAD=$(python3 -c 'import json,os;print(json.dumps({"tag_name":os.environ["TAG"],"name":os.environ["TAG"],"body":open("CHANGELOG.md",encoding="utf-8").read()}))')
+            RESP=$(curl -sS -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" -d "$PAYLOAD" "$API/releases")
+            ID=$(printf '%s' "$RESP" | python3 -c 'import json,sys;print(json.load(sys.stdin)["id"])')
+            echo "created release id=$ID"
+          else
+            echo "release exists id=$ID, skip create"
+          fi
+          for F in app/build/outputs/apk/normal/release/app-normal-release.apk app/build/outputs/apk/system/release/app-system-release.apk; do
+            NAME=$(basename "$F")
+            CODE=$(curl -sS -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" --data-binary "@$F" "$API/releases/$ID/assets?name=$NAME" -o /dev/null -w '%{http_code}')
+            echo "upload $NAME -> $CODE"
+            if [ "$CODE" != "201" ]; then exit 1; fi
+          done
