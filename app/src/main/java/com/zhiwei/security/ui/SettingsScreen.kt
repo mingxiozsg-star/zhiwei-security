@@ -73,6 +73,37 @@ fun SettingsScreen(navController: NavController) {
     LaunchedEffect(Unit) { selfProtectStatus = SelfGuard.statusText(context) }
     var showAdbDialog by remember { mutableStateOf(false) }
     var adbRefresh by remember { mutableStateOf(0) } // 触发状态重组
+    // v1.8.1 规则包导入反馈
+    var ruleImportMsg by remember { mutableStateOf("") }
+    // 规则包文件选择（AdGuard / ABP / hosts 通用）
+    val ruleImportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        try {
+            val text = context.contentResolver.openInputStream(uri)?.use {
+                it.readBytes().toString(Charsets.UTF_8)
+            } ?: ""
+            if (text.isBlank()) {
+                ruleImportMsg = "❌ 文件为空或无法读取"
+            } else {
+                val (r, w) = com.zhiwei.security.core.BlockAdsRules.applyRuleText(text)
+                // 落盘（追加而非覆盖，多次导入不丢规则），供下次启动自动加载
+                val dir = java.io.File(context.filesDir, "blockads")
+                if (!dir.exists()) dir.mkdirs()
+                val rf = java.io.File(dir, "rules.txt")
+                val old = if (rf.exists()) runCatching { rf.readText() }.getOrDefault("") else ""
+                rf.writeText(old + "\n" + text)
+                // 以「旧 + 新」重新应用，保证运行期规则与落盘一致
+                com.zhiwei.security.core.BlockAdsRules.applyRuleText(old + "\n" + text)
+                ruleImportMsg = "✅ 导入完成：本次新增拦截 $r 条、白名单 $w 条，当前共 " +
+                    "${com.zhiwei.security.core.BlockAdsRules.ruleCount} 条"
+                try { NetGuardService.restart(context) } catch (e: Throwable) { }
+            }
+        } catch (e: Throwable) {
+            ruleImportMsg = "❌ 导入失败：${e.message}"
+        }
+    }
 
     // VPN 授权请求
     val vpnLauncher = rememberLauncherForActivityResult(
@@ -177,7 +208,8 @@ fun SettingsScreen(navController: NavController) {
             }
             if (blockAds) {
                 Text(
-                    "规则 ${com.zhiwei.security.core.BlockAdsRules.ruleCount} 条 · 本次已拦截 " +
+                    "规则 ${com.zhiwei.security.core.BlockAdsRules.ruleCount} 条 · 白名单 " +
+                        "${com.zhiwei.security.core.BlockAdsRules.whiteCount} 条 · 本次已拦截 " +
                         "${Prefs.dnsBlockedCount} 次" +
                         (if (com.zhiwei.security.core.BlockAdsRules.lastBlockedDomain.isNotEmpty())
                             " · 最近：${com.zhiwei.security.core.BlockAdsRules.lastBlockedDomain}" else ""),
@@ -185,6 +217,22 @@ fun SettingsScreen(navController: NavController) {
                     color = Color(0xFF7EC8E3),
                     modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
                 )
+                // v1.8.1：规则包导入（AdGuard / ABP / hosts 通用）
+                OutlinedButton(
+                    onClick = { ruleImportLauncher.launch(arrayOf("*/*")) },
+                    modifier = Modifier.fillMaxWidth().padding(start = 0.dp, bottom = 6.dp),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("导入规则包（AdGuard / ABP / hosts）", fontSize = 13.sp)
+                }
+                if (ruleImportMsg.isNotEmpty()) {
+                    Text(
+                        ruleImportMsg,
+                        fontSize = 12.sp,
+                        color = Color(0xFF9CCC65),
+                        modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                    )
+                }
             }
             SwitchItem("本地离线病毒扫描", "LovelaceAV 引擎二级校验（特征库外置，缺失时自动降级）", localAv) {
                 localAv = it; Prefs.localAvEnabled = it

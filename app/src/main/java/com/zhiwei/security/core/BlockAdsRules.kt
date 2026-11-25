@@ -34,14 +34,14 @@ object BlockAdsRules {
         "tanx.com", "alimama.com", "mmstat.com", "simba.taobao.com",
         "gdt.qq.com", "advertising.apple.com", "applovin.com", "vungle.com",
         "pangolin-sdk-toutiao.com", "pglstatp-toutiao.com", "ad.toutiao.com",
-        "bytedance.com/ad", "gromore.com", "csjplatform.com",
+        "gromore.com", "csjplatform.com",
         "mobads.baidu.com", "miuiad.com", "ad.xiaomi.com", "mistat.xiaomi.com",
         "tracking.miui.com", "adata.hicloud.com", "ads.hicloud.com",
         "opendata.hicloud.com", "metrics.oppomobile.com", "adx.oppo.com",
-        "grs.hicloud.com/ad", "honor-ads.com", "ads.vivo.com.cn",
+        "honor-ads.com", "ads.vivo.com.cn",
         "metrics.vivo.com.cn", "adnet.oppomobile.com",
         // ===== 国际广告与追踪 =====
-        "facebook.com/tr", "graph.facebook.com", "connect.facebook.net",
+        "graph.facebook.com", "connect.facebook.net",
         "appsflyer.com", "adjust.com", "branch.io", "kochava.com",
         "amplitude.com", "mixpanel.com", "segment.io", "segment.com",
         "heapanalytics.com", "fullstory.com", "hotjar.com", "mouseflow.com",
@@ -53,11 +53,71 @@ object BlockAdsRules {
         "amazon-adsystem.com", "media.net", "mgid.com", "revcontent.com",
         "zedo.com", "tribalfusion.com", "turn.com", "tapad.com",
         "moatads.com", "doubleverify.com", "adsafeprotected.com",
-        "imasdk.googleapis.com", "googlevideo.com/ad",
+        "imasdk.googleapis.com", "googlevideo.com",
         // ===== 已知恶意/诈骗/钓鱼家族域名特征 =====
         "dnslog.cn", "ceye.io", "burpcollaborator.net",   // 反连测试被滥用
         "ngrok.io", "ngrok-free.app",                      // 隧道外连高发
-        "trycloudflare.com", "serveo.net", "localhost.run"
+        "trycloudflare.com", "serveo.net", "localhost.run",
+
+        // ===== v1.8.1 扩充：国内广告 SDK 与追踪（真实公开域名） =====
+        // 友盟 / 极光 / TalkingData / GrowingIO / 神策
+        "umeng.com", "umeng.co", "umengcloud.com", "ufp.umeng.com", "uyunad.com",
+        "jpush.cn", "jiguang.cn", "talkingdata.com", "talkingdata.net",
+        "growingio.com", "sensorsdata.cn", "sensorsdata.com", "analysys.cn",
+        // 腾讯系广告与统计
+        "gdt.qq.com", "e.qq.com", "pingjs.qq.com", "ta.qq.com", "pingfore.qq.com",
+        "btrace.qq.com", "ad.qq.com", "ads.qq.com", "mkt.qq.com",
+        // 字节系（穿山甲 / 巨量 / Pangle）
+        "pangolin-sdk-toutiao.com", "pglstatp-toutiao.com", "ad.toutiao.com",
+        "gromore.com", "csjplatform.com", "snssdk.com",
+        "pangle.io", "pangle-sdk.com",
+        // 阿里系
+        "tanx.com", "alimama.com", "atanx.alicdn.com", "log.mmstat.com",
+        "wgo.mmstat.com", "mmstat.com", "simba.taobao.com", "adash.m.taobao.com",
+        // 百度系
+        "pos.baidu.com", "cpro.baidu.com", "cbjs.baidu.com", "eclick.baidu.com",
+        "mobads.baidu.com", "union.baidu.com", "afd.baidu.com", "usp1.baidu.com",
+        // 其他国内
+        "miuiad.com", "ad.xiaomi.com", "mistat.xiaomi.com", "tracking.miui.com",
+        "adata.hicloud.com", "ads.hicloud.com", "opendata.hicloud.com",
+        "metrics.oppomobile.com", "adx.oppo.com", "adnet.oppomobile.com",
+        "honor-ads.com", "ads.vivo.com.cn", "metrics.vivo.com.cn",
+        "iad.g.163.com", "analytics.163.com", "beacon.sina.com.cn",
+        "mvm.360.cn", "s.360.cn", "kuaishouzt.com", "ad.kuaishou.com",
+        "wifi.sina.com.cn", "log.sina.com.cn", "sax.sina.com.cn",
+
+        // ===== v1.8.1 扩充：海外广告网络 / 聚合平台（AppLovin MAX 生态等） =====
+        "applovin.com", "applvn.com", "adcolony.com", "vungle.com",
+        "chartboost.com", "tapjoy.com", "ironsrc.com", "ironsrc.mobi",
+        "supersonicads.com", "inmobi.com", "inmobicdn.net", "mintegral.com",
+        "fyber.com", "smaato.net", "ogury.com", "adform.net", "teads.tv",
+        "unityads.unity3d.com", "auction.unityads.unity3d.com",
+        "criteo.com", "criteo.net", "adnxs.com", "adsrvr.org",
+        "rubiconproject.com", "pubmatic.com", "openx.net", "casalemedia.com",
+        "smartadserver.com", "yieldmo.com", "indexww.com", "triplelift.com",
+        "sharethrough.com", "conversantmedia.com", "ads.yandex.ru",
+        "an.yandex.ru", "mc.yandex.ru", "top-fwz1.mail.ru",
+        "amazon-adsystem.com", "media.net", "mgid.com", "revcontent.com",
+        "zedo.com", "tribalfusion.com", "turn.com", "tapad.com",
+        "moatads.com", "doubleverify.com", "adsafeprotected.com",
+        "imasdk.googleapis.com", "2mdn.net",
+        "scorecardresearch.com", "quantserve.com", "comscore.com",
+        "chartbeat.com", "outbrain.com", "taboola.com",
+        "appsflyer.com", "adjust.com", "branch.io", "kochava.com",
+        "amplitude.com", "mixpanel.com", "segment.io", "segment.com",
+        "heapanalytics.com", "fullstory.com", "hotjar.com", "mouseflow.com",
+        "crazyegg.com", "newrelic.com", "bugsnag.com", "sentry.io",
+        "graph.facebook.com", "connect.facebook.net",
+        "analytics.tiktok.com", "business-api.tiktok.com",
+        "ads.tiktok.com", "log.tiktokv.com", "mon.tiktokv.com",
+
+        // ===== v1.8.1 扩充：反连 / 隧道 / 临时回连平台（钓鱼与后门高发） =====
+        "interact.sh", "oast.fun", "oast.me", "oast.pro", "oast.live",
+        "requestbin.net", "requestbin.io", "webhook.site", "pipedream.net",
+        "beeceptor.com", "hookbin.com", "requestcatcher.com",
+        "localtunnel.me", "pagekite.me", "telebit.io", "tunnelto.dev",
+        "burpcollaborator.net", "canarytokens.com", "dnslog.cn", "ceye.io",
+        "tu4.org", "xip.io", "nip.io", "sslip.io"
     )
 
     /** 明确放行（即使父域被拦也不拦），防止把正常服务打挂 */
@@ -74,8 +134,10 @@ object BlockAdsRules {
     )
 
     // 运行期索引（避免每次热更新后重复解析）
-    @Volatile private var rules: Array<String> = BUILTIN
-    @Volatile private var whitelist: Array<String> = BUILTIN_WHITELIST
+    // v1.8.1：改为 HashSet，规则表从 150 条扩到 200+ 后线性扫描成为热路径瓶颈，
+    // 精确匹配退化 O(1)，后缀判断只对当前域名的父域链做常数次。
+    @Volatile private var ruleSet: Set<String> = BUILTIN.toHashSet()
+    @Volatile private var whiteSet: Set<String> = BUILTIN_WHITELIST.toHashSet()
 
     /** 命中计数（UI 展示"已拦截 N 次"，非精确统计） */
     @Volatile var blockedCount: Long = 0L
@@ -84,41 +146,97 @@ object BlockAdsRules {
     @Volatile var lastBlockedDomain: String = ""
         private set
 
-    /** 加载外部规则文件（覆盖内置；文件不存在则保持内置） */
+    /**
+     * 解析一行规则文本，支持三种主流格式（实测可直接吃下 AdGuard / ABP / hosts 规则包）：
+     * - hosts：`0.0.0.0 ads.example.com` / `127.0.0.1 ads.example.com`
+     * - ABP/AdGuard 拦截：`||ads.example.com^`、`|https://ads.example.com/`、纯域名
+     * - ABP/AdGuard 例外：`@@||safe.example.com^`、`@@safe.example.com`
+     *
+     * @return Pair(域名, 是否为白名单) 或 null 表示该行不是可用规则
+     */
+    private fun parseRuleLine(raw: String): Pair<String, Boolean>? {
+        var line = raw.trim()
+        if (line.isEmpty()) return null
+        if (line.startsWith("#") || line.startsWith("!")) return null   // 注释
+        if (line.startsWith("[")) return null                            // [Adblock Plus 2.0]
+
+        var isException = false
+        // ABP 例外语法 @@||domain^
+        if (line.startsWith("@@")) {
+            isException = true
+            line = line.substring(2).trim()
+        }
+        // hosts 格式：IP 开头
+        if (line.startsWith("0.0.0.0") || line.startsWith("127.0.0.1") ||
+            line.startsWith("::1") || line.startsWith("::")) {
+            line = line.substringAfter(' ', "").trim()
+            if (line.isEmpty()) return null
+        }
+        // 剥离 ABP 修饰符
+        line = line.removePrefix("||").removePrefix("|")
+        line = line.removeSuffix("^").removeSuffix("|")
+        // AdGuard 的 $third-party 等选项：DNS 层做不到，直接丢弃整条
+        if (line.contains('$')) return null
+        // 显式正则规则（/regex/）不支持
+        if (line.startsWith("/") && line.endsWith("/") && line.length > 2) return null
+        // 通配符规则（*.example.com）转成后缀域名
+        line = line.removePrefix("*.").removePrefix(".")
+        // 取主机名部分（去掉路径、协议、端口）
+        line = line.substringAfter("://")
+        line = line.substringBefore('/')
+        line = line.substringBefore(':')
+        line = line.trim().lowercase()
+        if (line.isEmpty() || !line.contains('.')) return null
+        if (line.any { it == ' ' || it == '*' || it == '#' }) return null
+        return line to isException
+    }
+
+    /** 加载外部规则文件（与内置合并；文件不存在则保持内置） */
     fun load(context: Context) {
         try {
             val f = File(context.filesDir, "blockads/rules.txt")
             if (!f.exists() || f.length() == 0L) {
-                rules = BUILTIN
-                whitelist = BUILTIN_WHITELIST
+                ruleSet = BUILTIN.toHashSet()
+                whiteSet = BUILTIN_WHITELIST.toHashSet()
                 return
             }
-            val r = ArrayList<String>()
-            val w = ArrayList<String>()
-            val wl = ArrayList<String>(BUILTIN_WHITELIST.toList())
-            f.forEachLine { raw ->
-                val line = raw.trim()
-                if (line.isEmpty() || line.startsWith("#")) return@forEachLine
-                when {
-                    line.startsWith("@@") -> wl.add(line.substring(2).trim().lowercase())
-                    line.startsWith("-") -> wl.add(line.substring(1).trim().lowercase())
-                    else -> r.add(line.lowercase())
-                }
-            }
-            // 外部文件里的规则 + 内置（合并而非覆盖，避免用户只加一条就丢全部基础库）
-            val merged = LinkedHashSet<String>()
-            merged.addAll(BUILTIN.toList())
-            merged.addAll(r)
-            rules = merged.toTypedArray()
-            whitelist = wl.distinct().toTypedArray()
+            applyRuleText(f.readText())
         } catch (e: Throwable) {
-            rules = BUILTIN
-            whitelist = BUILTIN_WHITELIST
+            ruleSet = BUILTIN.toHashSet()
+            whiteSet = BUILTIN_WHITELIST.toHashSet()
         }
     }
 
+    /**
+     * 直接把整段规则文本并入规则库（供 UI 的「导入规则包」使用）。
+     * 支持 AdGuard / ABP / hosts 三种格式，自动识别。
+     *
+     * @return Pair(新增拦截规则数, 新增白名单数)
+     */
+    fun applyRuleText(text: String): Pair<Int, Int> {
+        val r = LinkedHashSet<String>(BUILTIN.toList())
+        val wl = LinkedHashSet<String>(BUILTIN_WHITELIST.toList())
+        var addedR = 0
+        var addedW = 0
+        text.lineSequence().forEach { raw ->
+            val parsed = parseRuleLine(raw) ?: return@forEach
+            val (host, isException) = parsed
+            if (isException) {
+                if (wl.add(host)) addedW++
+            } else {
+                if (r.add(host)) addedR++
+            }
+        }
+        ruleSet = r
+        whiteSet = wl
+        return addedR to addedW
+    }
+
     /** 规则条数（UI 展示） */
-    val ruleCount: Int get() = rules.size
+    val ruleCount: Int get() = ruleSet.size
+
+    /** 白名单条数（UI 展示） */
+    val whiteCount: Int get() = whiteSet.size
 
     /**
      * 是否应拦截该域名。
@@ -132,9 +250,9 @@ object BlockAdsRules {
     fun shouldBlock(domain: String): Boolean {
         if (domain.isEmpty()) return false
         // 白名单优先：当前域名或任一父域在白名单里 → 放行
-        if (matchesAny(domain, whitelist)) return false
+        if (matchesAny(domain, whiteSet)) return false
         // 规则匹配：当前域名或任一父域命中 → 拦截
-        if (matchesAny(domain, rules)) {
+        if (matchesAny(domain, ruleSet)) {
             blockedCount++
             lastBlockedDomain = domain
             return true
@@ -143,25 +261,15 @@ object BlockAdsRules {
     }
 
     /** 语义：上层域名后缀匹配（abp `||domain^` 的等价实现） */
-    private fun matchesAny(domain: String, table: Array<String>): Boolean {
-        var idx = 0
+    private fun matchesAny(domain: String, table: Set<String>): Boolean {
+        var sub = domain
         while (true) {
-            val sub = if (idx == 0) domain else domain.substring(idx)
-            for (rule in table) {
-                if (sub == rule) return true
-                // 规则带路径的情况（如 "facebook.com/tr"）用前缀判断，
-                // 因为 DNS 层拿不到路径，这类规则实际永远不命中，保留仅为将来 HTTP 层扩展
-                if (rule.indexOf('/') > 0) continue
-                if (sub.length > rule.length) {
-                    val off = sub.length - rule.length
-                    if (sub[off - 1] == '.' && sub.regionMatches(off, rule, 0, rule.length)) return true
-                }
-            }
-            val dot = domain.indexOf('.', idx + 1)
-            if (dot < 0) return false
-            idx = dot + 1
-            // 只剩 TLD 时没必要再查
-            if (domain.indexOf('.', idx) < 0 && idx >= domain.length - 1) return false
+            if (sub in table) return true
+            val dot = sub.indexOf('.')
+            if (dot < 0 || dot >= sub.length - 1) return false
+            sub = sub.substring(dot + 1)
+            // 只剩 TLD 时停止（不会把 "com" 当规则命中）
+            if (!sub.contains('.')) return false
         }
     }
 
