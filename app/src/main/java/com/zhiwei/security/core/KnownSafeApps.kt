@@ -280,6 +280,181 @@ object KnownSafeApps {
         "com.oppo.market",
         "com.heytap.market",
         "com.samsung.android.galaxyapps"
+        // ===== 第三方公开包名清单补充（应用/游戏 扩展集，防误杀） =====
+        "com.qzone.Qzone",                         // QQ空间
+        "com.tencent.androidqqmail",               // QQ邮箱
+        "com.baidu.tieba",                         // 百度贴吧
+        "com.tencent.news",                        // 腾讯新闻
+        "com.tencent.qingshi",                     // 微视
+        "com.cmcc.cmvideo",                        // 咪咕视频
+        "com.bilibili.comic",                      // 哔哩哔哩漫画
+        "com.tencent.ac",                          // 腾讯动漫
+        "com.kuaikan.comic",                       // 快看漫画
+        "com.douyu.group",                         // 斗鱼
+        "com.duowan.kiwi",                         // 虎牙直播
+        "com.kugou.android",                       // 酷狗音乐
+        "com.ximalaya.ting.android",               // 喜马拉雅
+        "com.qq.reader",                           // QQ阅读
+        "com.qidian.QDReader",                     // 起点读书
+        "com.dragon.read",                         // 番茄小说
+        "com.chaozh.iReader",                      // 掌阅
+        "com.shuqi.controller",                    // 书旗小说
+        "com.cmcc.cmread",                         // 咪咕阅读
+        "com.douban.read",                         // 豆瓣阅读
+        "com.alibaba.wireless",                    // 1688
+        "com.vip.vipshop",                         // 唯品会
+        "com.shizhuang.duapp",                     // 得物
+        "com.suning.mobile.ebuy",                  // 苏宁易购
+        "com.xiaomi.shop",                         // 小米商城
+        "com.vmall.client",                        // 华为商城
+        "com.smzdm.client.android",                // 什么值得买
+        "com.tencent.map",                         // 腾讯地图
+        "me.ele",                                  // 饿了么
+        "com.ctrip.android.view",                  // 携程旅行
+        "com.qunar",                               // 去哪儿旅行
+        "com.MobileTicket",                        // 铁路12306
+        "com.hexin.plat.android",                  // 同花顺
+        "com.eastmoney.android.berlin",            // 东方财富
+        "com.xueqiu.android",                      // 雪球
+        "com.qihoo.appstore",                      // 360手机助手
+        "com.coolapk.market",                      // 酷安
+        "com.wandoujia.phoenix2",                  // 豌豆荚
+        "com.yingyonghui.market",                  // 应用汇
+        "com.baidu.baidotranslate",                // 百度翻译
+        "com.baidu.appsearch",                     // 百度手机助手
+        "com.baidu.homework",                      // 作业帮
+        "com.intsig.camscanner",                   // 扫描全能王
+        "com.snda.wifilocating",                   // WiFi万能钥匙
+        "com.gotokeep.keep",                       // Keep
+        "com.xiaomi.hm.health",                    // 小米运动健康
+        "com.mt.mtxx.mtxx",                        // 美图秀秀
+        "com.ss.android.lark",                     // 飞书
+        "com.tencent.wemeet.app",                  // 腾讯会议
+        "cn.xuexi.android",                        // 学习强国
+        "com.youdao.dict",                         // 网易有道词典
+        "com.netease.yanxuan",                     // 网易严选
+        "com.lofter.android",                      // LOFTER
+        "com.bbk.appstore",                        // vivo应用商店
+        "com.meizu.mstore",                        // 魅族应用商店
+        "com.sec.android.app.samsungapps",         // 三星应用商店
+        "com.lenovo.leos.appstore",                // 联想应用商店
+        "zte.com.market",                          // 中兴应用商店
+        "com.tencent.jcc",                         // 金铲铲之战
+        "com.tencent.tmgp.cod",                    // 使命召唤手游
+        "com.tgc.sky.android",                     // 光·遇
+        "com.netease.nshm",                        // 逆水寒手游
+        "com.netease.mrzh",                        // 明日之后
+        "com.netease.dhxy",                        // 大话西游手游
+        "com.netease.x19",                         // 我的世界（国服）
+        "com.bilibili.azurlane",                   // 碧蓝航线
+        "com.sausage.manfree",                     // 香肠派对
+        "com.kiloo.subwaysurf",                    // 地铁跑酷
+        "com.imangi.templerun2",                   // 神庙逃亡2
+        "com.google.android.googlequicksearchbox",  // Google 搜索
+        "com.google.android.apps.youtube.music",   // YouTube Music
+        "com.google.android.apps.docs",            // Google Drive
+        "com.google.android.apps.translate",       // Google 翻译
+        "com.google.android.calendar",             // Google 日历
+        "com.google.android.keep",                 // Google Keep
+        "com.google.android.apps.docs.editors.docs",  // Google 文档
+        "com.google.android.apps.docs.editors.sheets",  // Google 表格
+        "com.google.android.apps.docs.editors.slides",  // Google 幻灯片
+        "com.google.android.apps.meetings",        // Google Meet
+        "com.google.android.apps.messaging",       // Google 信息
+        "com.google.android.dialer",               // Google 电话
+        "com.google.android.contacts",             // Google 通讯录
+        "com.google.android.GoogleCamera",         // Google 相机
+        "com.google.android.deskclock",            // Google 时钟
+        "com.google.android.play.games",           // Google Play 游戏
+        "com.google.android.apps.books",           // Google Play 图书
+        "com.google.android.videos",               // Google Play 影视
+        "com.google.android.apps.nbu.files",       // Google Files
+        "com.google.android.projection.gearhead",  // Android Auto
+        "com.google.android.wearable.app",         // Wear OS
+        "com.google.android.webview",              // Android System WebView
+        "com.google.android.tts",                  // Google 文字转语音
+        "com.facebook.lite",                       // Facebook Lite
+        "com.whatsapp.w4b",                        // WhatsApp Business
+        "org.thoughtcrime.securesms",              // Signal
+        "com.viber.voip",                          // Viber
+        "jp.naver.line.android",                   // LINE
+        "com.kakao.talk",                          // KakaoTalk
+        "com.reddit.frontpage",                    // Reddit
+        "com.quora.android",                       // Quora
+        "tv.twitch.android.app",                   // Twitch
+        "com.pinterest",                           // Pinterest
+        "com.apple.android.music",                 // Apple Music
+        "com.amazon.avod.thirdpartyclient",        // Prime Video
+        "com.hulu.plus",                           // Hulu
+        "com.soundcloud.android",                  // SoundCloud
+        "org.videolan.vlc",                        // VLC
+        "com.mxtech.videoplayer.ad",               // MX Player
+        "org.xbmc.kodi",                           // Kodi
+        "com.shazam.android",                      // Shazam
+        "com.microsoft.office.onenote",            // Microsoft OneNote
+        "com.microsoft.skydrive",                  // Microsoft OneDrive
+        "com.microsoft.authenticator",             // Microsoft Authenticator
+        "com.microsoft.launcher",                  // Microsoft Launcher
+        "us.zoom.videomeetings",                   // Zoom
+        "com.Slack",                               // Slack
+        "com.notion.id",                           // Notion
+        "com.dropbox.android",                     // Dropbox
+        "com.todoist",                             // Todoist
+        "com.canva.app",                           // Canva
+        "com.adobe.reader",                        // Adobe Acrobat Reader
+        "com.duckduckgo.mobile.android",           // DuckDuckGo
+        "com.teamviewer.teamviewer.marketMobile",  // TeamViewer
+        "com.anydesk.anydeskandroid",              // AnyDesk
+        "com.rarlab.rar",                          // RAR
+        "com.touchtype.swiftkey",                  // SwiftKey
+        "com.waze",                                // Waze
+        "ru.yandex.yandexmaps",                    // Yandex Maps
+        "com.paypal.android.p2pmobile",            // PayPal
+        "com.venmo",                               // Venmo
+        "com.squareup.cash",                       // Cash App
+        "com.revolut.revolut",                     // Revolut
+        "com.transferwise.android",                // Wise
+        "com.binance.dev",                         // Binance
+        "com.coinbase.android",                    // Coinbase
+        "com.ebay.mobile",                         // eBay
+        "com.walmart.android",                     // Walmart
+        "com.target.ui",                           // Target
+        "com.ubercab",                             // Uber
+        "com.lyft.android",                        // Lyft
+        "com.airbnb.android",                      // Airbnb
+        "com.booking",                             // Booking.com
+        "com.tripadvisor.tripadvisor",             // TripAdvisor
+        "com.myfitnesspal.android",                // MyFitnessPal
+        "com.strava",                              // Strava
+        "com.fitbit.FitbitMobile",                 // Fitbit
+        "com.sec.android.app.shealth",             // Samsung Health
+        "com.duolingo",                            // Duolingo
+        "com.quizlet.quizletandroid",              // Quizlet
+        "com.microblink.photomath",                // Photomath
+        "org.khanacademy.android",                 // Khan Academy
+        "com.udemy.android",                       // Udemy
+        "org.coursera.android",                    // Coursera
+        "com.sec.android.app.sbrowser",            // Samsung Internet
+        "com.samsung.android.app.notes",           // Samsung Notes
+        "com.pubg.krmobile",                       // PUBG Mobile KR
+        "com.dts.freefireth",                      // Garena Free Fire
+        "com.dts.freefiremax",                     // Free Fire MAX
+        "com.mobile.legends",                      // Mobile Legends: Bang Bang
+        "com.miHoYo.GenshinImpact",                // Genshin Impact
+        "com.miHoYo.hsr",                          // Honkai: Star Rail
+        "com.supercell.boombeach",                 // Boom Beach
+        "com.king.candycrushsaga",                 // Candy Crush Saga
+        "com.rovio.angrybirds",                    // Angry Birds
+        "com.rovio.angrybirds2",                   // Angry Birds 2
+        "com.gameloft.android.ANMP.GloftA9HM",     // Asphalt 9: Legends
+        "com.gameloft.android.ANMP.GloftM5HM",     // Modern Combat 5
+        "com.ea.game.nfs14_row",                   // Need for Speed: No Limits
+        "com.miniclip.eightballpool",              // 8 Ball Pool
+        "com.fingersoft.hillclimb",                // Hill Climb Racing
+        "com.fingersoft.hillclimb2",               // Hill Climb Racing 2
+        "com.robtopx.geometryjump",                // Geometry Dash
+        "com.nianticlabs.pokemongo",               // Pokémon GO
+        "com.bandainamcoent.dokkanbattle",         // Dragon Ball Z Dokkan Battle
     )
 
     /**

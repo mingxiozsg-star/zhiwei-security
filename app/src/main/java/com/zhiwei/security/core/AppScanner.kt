@@ -189,6 +189,18 @@ class AppScanner(private val context: Context) {
             reasons.add("请求高危权限过多（${grantedDangerous.size} 项）")
         }
 
+        // 6. 设备管理员锁机能力（v1.8.1）：持有设备管理员的第三方应用可改锁屏密码、
+        //    锁死前台。这是锁机勒索的核心武器，必须在评分中体现，
+        //    但仍不单独判 VIRUS（白名单应用已在前面短路）。
+        val isAdmin = try { DeviceAdminCounter.hasLockCapableAdmin(context, pkg.packageName) } catch (e: Throwable) { false }
+        if (isAdmin) {
+            score += 25
+            reasons.add("已激活设备管理器（可修改锁屏密码 / 锁死界面，锁机勒索典型特征）")
+        }
+        if ("android.permission.BIND_DEVICE_ADMIN" in grantedDangerous && !isAdmin) {
+            reasons.add("请求设备管理器权限但未激活（可能诱导激活中）")
+        }
+
         score = score.coerceAtMost(100)
 
         // 关键策略（v1.8.0 误杀修复）：

@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity() {
                         composable("journal") { JournalScreen(navController) }
                         composable("licenses") { LicenseScreen(navController) }
                         composable("auth") { AuthManageScreen(navController) }
+                        composable("devadmin") { DeviceAdminScreen(navController) }
                     }
                 }
             }

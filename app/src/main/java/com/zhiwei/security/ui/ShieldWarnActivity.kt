@@ -54,6 +54,18 @@ class ShieldWarnActivity : ComponentActivity() {
                 var processing by remember { mutableStateOf(false) }
                 var statusMsg by remember { mutableStateOf<String?>(null) }
                 val privReady = remember { Privilege.isReady }
+                // 该应用是否持有设备管理员（决定是否显示「仅撤销管理员」按钮）
+                var hasAdmin by remember { mutableStateOf(false) }
+                LaunchedEffect(pkg) {
+                    if (privReady) {
+                        hasAdmin = withContext(Dispatchers.IO) {
+                            try {
+                                com.zhiwei.security.core.DeviceAdminCounter
+                                    .hasLockCapableAdmin(this@ShieldWarnActivity, pkg)
+                            } catch (e: Throwable) { false }
+                        }
+                    }
+                }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -188,6 +200,40 @@ class ShieldWarnActivity : ComponentActivity() {
                                 }
 
                                 Spacer(Modifier.height(10.dp))
+
+                                // ①.5 仅撤销设备管理员（保留应用）——锁机勒索专用解药
+                                if (hasAdmin && privReady) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            scope.launch {
+                                                processing = true
+                                                val ok = withContext(Dispatchers.IO) {
+                                                    try {
+                                                        var removed = 0
+                                                        com.zhiwei.security.core.DeviceAdminCounter
+                                                            .listActiveAdmins(this@ShieldWarnActivity)
+                                                            .filter { it.pkg == pkg }
+                                                            .forEach { if (com.zhiwei.security.core.DeviceAdminCounter.counter(it)) removed++ }
+                                                        removed > 0
+                                                    } catch (e: Throwable) { false }
+                                                }
+                                                processing = false
+                                                statusMsg = if (ok)
+                                                    "已撤销该应用的设备管理员权限，应用保留但无法再改密码/锁屏"
+                                                else
+                                                    "撤销失败：可能需要先解除设备所有者身份"
+                                                if (ok) hasAdmin = false
+                                            }
+                                        },
+                                        enabled = !processing,
+                                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                                        shape = RoundedCornerShape(25.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF7EC8E3))
+                                    ) {
+                                        Text("仅撤销设备管理员（保留应用）", fontSize = 15.sp)
+                                    }
+                                    Spacer(Modifier.height(10.dp))
+                                }
 
                                 // ② 本次忽略
                                 OutlinedButton(

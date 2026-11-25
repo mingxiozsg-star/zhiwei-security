@@ -86,6 +86,7 @@ object BehaviorGuard {
                     val suspect = foregroundPkg?.takeIf {
                         it != context.packageName &&
                         it !in Prefs.whitelist &&
+                        !KnownSafeApps.isTrusted(it) &&
                         it != pkg &&
                         !PanicKill.isSystemApp(context, it)
                     }
