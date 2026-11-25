@@ -279,7 +279,7 @@ object KnownSafeApps {
         "com.vivo.appstore",
         "com.oppo.market",
         "com.heytap.market",
-        "com.samsung.android.galaxyapps"
+        "com.samsung.android.galaxyapps",
         // ===== 第三方公开包名清单补充（应用/游戏 扩展集，防误杀） =====
         "com.qzone.Qzone",                         // QQ空间
         "com.tencent.androidqqmail",               // QQ邮箱
