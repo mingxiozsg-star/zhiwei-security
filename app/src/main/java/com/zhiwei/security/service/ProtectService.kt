@@ -29,6 +29,7 @@ import android.util.Log
 import kotlin.concurrent.thread
 import com.zhiwei.security.core.Prefs
 import com.zhiwei.security.core.Privilege
+import com.zhiwei.security.core.SecurityJournal
 import com.zhiwei.security.core.VirusDb
 import com.zhiwei.security.core.KnownSafeApps
 import com.zhiwei.security.core.ThreatResponder
