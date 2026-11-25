@@ -1,4 +1,35 @@
 # 更新日志
+
+## v1.8.1（2026-11-25）
+### 第十三轮（设备管理员反制 + 白名单大扩容 + 规则库升级）
+
+**新增 1：设备管理员反制引擎（锁机勒索的正面解药）**
+- 新增 `core/DeviceAdminCounter.kt`：枚举全机已激活的设备管理员（`dpm list-active-admins`），自动分三类标注 —— **知微自身** / **可信应用** / **未知第三方**
+- 锁机木马的典型链路：诱导用户点「激活设备管理器」→ `set-password` 偷改锁屏密码 → 锁死前台 → 用户既解不了锁也卸载不掉。本版直接斩断这条链
+- 反制动作 `counter()`：执行 `dpm remove-active-admin`；若恶意软件在前台霸屏对抗导致失败，先 `am force-stop` 压制宿主进程，300ms 后重试剥离
+- **安全红线**：知微自身的 `.dhizuku.ZhiweiDAReceiver` 与全部可信应用永久豁免，绝不自残、绝不误伤正规应用；本类**绝不卸载任何应用**，卸载权仍锁在三按钮确认窗内
+- **性能**：`dpm` 命令有 30 秒进程内缓存快照，全盘扫描数百应用不会因逐包探测而卡顿；反制触发时自动 `invalidateCache()`
+- 新增 `ui/DeviceAdminScreen.kt` 独立页面（Home 页 → 设备管理员）：概览「已激活 / 可疑」计数、逐个标注归属、单个撤销 + 一键撤销全部可疑管理员，操作前均有确认弹窗并明确「应用不会被删除」
+- `AppScanner` 接入管理员锁机能力评分（+25 分，标注「已激活设备管理器（可修改锁屏密码 / 锁死界面，锁机勒索典型特征）」），仅请求未激活的也单独提示「可能诱导激活中」
+- `ShieldWarnActivity` 新增第四个动作「仅撤销设备管理员（保留应用）」——只拔掉高危能力，数据和应用都留着
+- `BehaviorGuard` 嫌疑定位接入可信库短路，避免对白名单应用做越权行为判定
+
+**新增 2：可信应用白名单 280+ → 434 个**
+- 吸收 340+ 条国内外常见应用与热门游戏包名清单，去重后新增 174 个，总量达 **434 个**
+- 新增覆盖：国内外主流社交、金融支付、电商、办公套件，以及 Roblox、Minecraft、原神海外版、Garena Free Fire、Dragon Ball Z Dokkan Battle 等热门网游与单机
+- 白名单豁免链路保持不变：扫描跳过 / 外部引擎短路 / 云端复核不提交 / 新装监控不告警 / 权限收回不执行 / 霸屏检测豁免
+
+**新增 3：网络拦截规则库升级（约 150 → 277+ 条）**
+- 国内：友盟、极光、TalkingData、GrowingIO、神策、腾讯 GDT、字节穿山甲 / 巨量 / Pangle、阿里 Tanx、百度联盟、小米 / 华为 / OPPO / vivo / 荣耀 / 三星各厂广告与统计域名
+- 海外：AppLovin MAX 全生态、AdColony、Vungle、Chartboost、Tapjoy、IronSource、InMobi、Mintegral、Fyber、Smaato、Ogury、Criteo、AppNexus、PubMatic、OpenX、Amazon Ads、TikTok 归因等
+- 安全类：Interactsh / OAST / DNSLog / Ceye 反连平台，RequestBin / Webhook.site / Beeceptor 回连接收，ngrok / localtunnel / serveo / Cloudflare Tunnel 隧道外连
+- **规则包导入**：设置页新增「导入规则包」，可直接吃下 **AdGuard / ABP / hosts** 三种格式，自动识别 `||domain^`、`@@` 例外、`0.0.0.0 domain`、`*.domain` 语法，不支持的 `$third-party` 选项与正则规则自动跳过
+- 匹配引擎从线性数组扫描改为 `HashSet` + 父域链查询，规则数量翻倍后热路径性能反而更好；多次导入采用追加而非覆盖，不丢历史规则
+
+**其他**
+- 修复 `tools/gh_sync.py` 只推白名单内新文件导致新增源码漏同步的问题，改为自动收录 `app/src/` 下全部新文件
+- 版本号：versionCode 19 → **20**，versionName 1.8.0 → **1.8.1**
+
 ## v1.8.0（2026-11-25）
 
 ### 第十二轮（误杀熔断 + 三按钮确认窗 + 域名过滤补齐）
