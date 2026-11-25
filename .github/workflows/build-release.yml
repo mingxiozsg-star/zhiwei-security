@@ -48,9 +48,17 @@ jobs:
           else
             echo "release exists id=$ID, skip create"
           fi
+          # 已存在同名资产则先删掉（重跑幂等）
+          EXIST=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" "$API/releases/$ID/assets")
           for F in app/build/outputs/apk/normal/release/app-normal-release.apk app/build/outputs/apk/system/release/app-system-release.apk; do
             NAME=$(basename "$F")
-            CODE=$(curl -sS -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" --data-binary "@$F" "$API/releases/$ID/assets?name=$NAME" -o /dev/null -w '%{http_code}')
+            AID=$(printf '%s' "$EXIST" | NAME="$NAME" python3 -c 'import json,os,sys;n=os.environ["NAME"];d=json.load(sys.stdin);print(next((a["id"] for a in d if a["name"]==n),""))' 2>/dev/null || true)
+            if [ -n "$AID" ]; then
+              curl -sS -X DELETE -H "Authorization: Bearer $GITHUB_TOKEN" "$API/releases/assets/$AID" >/dev/null || true
+              echo "deleted old asset $NAME ($AID)"
+            fi
+            # 资产上传必须走 uploads.github.com，api.github.com 会返回 404
+            CODE=$(curl -sS -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" --data-binary "@$F" "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/$ID/assets?name=$NAME" -o /tmp/up.json -w '%{http_code}')
             echo "upload $NAME -> $CODE"
-            if [ "$CODE" != "201" ]; then exit 1; fi
+            if [ "$CODE" != "201" ]; then cat /tmp/up.json; exit 1; fi
           done
