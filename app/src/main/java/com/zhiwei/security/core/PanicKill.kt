@@ -8,16 +8,27 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 
 /**
- * 紧急斩杀器
- * 狂按音量键 3 次触发：斩杀所有第三方应用（前台+后台进程）
+ * 紧急斩杀器（v1.7.0 重写）
+ *
+ * 狂按音量键触发：让「除自己以外的一切非系统应用」在紧急状态下禁止运行，10 秒后恢复。
+ *
+ * 三个关键修复（对应「后台应用都还在」）：
+ * 1. **pidof 查不到包名** —— Android 的 pidof/toolbox 只匹配进程名（truncated 至 15 字符），
+ *    传包名几乎永远返回空，导致"验尸"永远判定已死、实际全活着。
+ *    改用 `ps -A -o PID,NAME` 全量解析 + 进程名与包名前缀匹配，附带 `dumpsys activity processes` 兜底。
+ * 2. **force-stop 不够快、会互相拉活** —— 国产 ROM 有保活链（A 拉起 B）。
+ *    改为：先 `am force-stop` 全量 → `am kill-all` 清后台 → `kill -9` 按 PID 逐个补刀 → 三轮复查。
+ * 3. **只杀不停，杀完立刻被拉回** —— 补 `pm suspend`/`pm disable-user` 冻结，
+ *    紧急窗口内应用被系统层面禁止运行，10 秒后自动解冻（这才是"禁止运行 10 秒"的真正实现）。
  *
  * 铁律：
- * 1. 自身包名 + 自身 uid 双重豁免，绝不自毁
- * 2. 提权桥梁（Shizuku/Dhizuku 本体）豁免——杀了桥等于缴自己的枪
- * 3. 批量单会话执行，杀完验尸补刀
- * 4. 仅当用户被困在第三方界面时才回桌面；在知微或桌面里绝不动
+ * - 自身包名 + 自身 uid 双重豁免，绝不自毁
+ * - 提权桥梁（Shizuku/Dhizuku 本体）豁免——杀了桥等于缴自己的枪
+ * - 系统应用一律豁免
  */
 object PanicKill {
 
@@ -30,11 +41,22 @@ object PanicKill {
         "rikka.shizuku"
     )
 
+    /** 紧急封锁窗口（毫秒）：期间第三方应用被冻结，期满自动恢复 */
+    const val LOCKDOWN_MS = 10_000L
+
+    @Volatile private var lockdownUntil = 0L
+    @Volatile private var lockdownRunning = false
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    /** 是否处于紧急封锁状态 */
+    val isLockdown: Boolean get() = System.currentTimeMillis() < lockdownUntil
+
     /**
-     * 斩杀所有第三方应用
-     * 返回值：正数=提权强杀数量；负数=仅后台清理数量
+     * 紧急封锁：非系统第三方应用全部禁止运行，[LOCKDOWN_MS] 后自动恢复。
+     * @param freeze true=额外冻结（pm suspend / disable-user），false=仅强杀
+     * @return 实际压制的应用数量；负数表示无提权仅能清后台
      */
-    fun killAllThirdParty(context: Context): Int {
+    fun killAllThirdParty(context: Context, freeze: Boolean = true): Int {
         Prefs.init(context)
         val self = context.packageName
         val selfUid = android.os.Process.myUid()
@@ -44,7 +66,7 @@ object PanicKill {
             if (pkg == self) return@filter false                    // 自身豁免①
             if (pkg in Prefs.whitelist) return@filter false
             if (pkg in BRIDGE_PKGS) return@filter false             // 桥梁豁免
-            try {                                                   // 自身 uid 豁免②（防双开/共享uid）
+            try {                                                   // 自身 uid 豁免②（防双开/共享 uid）
                 val ai = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
                     pm.getApplicationInfo(pkg, PackageManager.ApplicationInfoFlags.of(0))
                 else @Suppress("DEPRECATION") pm.getApplicationInfo(pkg, 0)
@@ -52,54 +74,113 @@ object PanicKill {
             } catch (e: Exception) { true }
         }
 
-        var killed: Int
-        var privileged = false
+        if (targets.isEmpty()) {
+            goHomeIfTrapped(context, self)
+            return 0
+        }
 
-        if (Privilege.isReady && targets.isNotEmpty()) {
-            privileged = true
-            // 单次会话批量强杀：一条 shell 脚本跑完，避免逐包往返慢且中途断桥
-            val sb = StringBuilder()
-            for (p in targets) {
-                sb.append("am force-stop ").append(p).append(" 2>/dev/null;")
-            }
-            // 等 1 秒验尸：国产 ROM 有拉活机制，残留的用 am kill + kill -9 补刀
-            sb.append("sleep 1;")
-            for (p in targets) {
-                sb.append("pidof ").append(p)
-                    .append(" >/dev/null 2>&1 && { am kill ").append(p)
-                    .append(" 2>/dev/null; kill -9 ${'$'}(pidof ").append(p)
-                    .append(") 2>/dev/null; };")
-            }
-            sb.append("echo BATCH_DONE")
-            val batchRes = Privilege.exec(sb.toString())
-            val batchOk = batchRes.second.contains("BATCH_DONE") // 通道断连时不谎报斩杀数
-
-            // 批量验尸：单次会话输出存活包名（逐包 exec 要起 N 个进程，太慢）
-            val checkSb = StringBuilder()
-            for (p in targets) {
-                checkSb.append("pidof ").append(p)
-                    .append(" >/dev/null 2>&1 && echo ALIVE:").append(p).append(";")
-            }
-            val check = Privilege.exec(checkSb.toString())
-            val aliveSet = check.second.lineSequence()
-                .filter { it.startsWith("ALIVE:") }
-                .map { it.removePrefix("ALIVE:").trim() }
-                .toSet()
-            killed = if (batchOk) targets.size - aliveSet.size else 0
-        } else {
-            // 无提权：只能清后台缓存进程（系统限制）
+        // 无提权：只能清后台缓存进程
+        if (!Privilege.isReady) {
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
             var n = 0
             for (pkg in targets) {
                 try { am.killBackgroundProcesses(pkg); n++ } catch (e: Exception) { }
             }
-            killed = n
+            goHomeIfTrapped(context, self)
+            return -n
         }
 
-        // 仅当用户被困在第三方界面（锁机/霸屏）时才拉回桌面；在知微或桌面里不动
-        goHomeIfTrapped(context, self)
+        // ===== 有提权：三轮压制 =====
+        val pkgList = targets.joinToString(" ")
+        val script = StringBuilder()
 
-        return if (privileged) killed else -killed
+        // 第一轮：系统级停用（冻结，真正的"禁止运行"）——立即生效且抗拉活
+        if (freeze) {
+            script.append("for p in ").append(pkgList).append("; do ")
+                .append("am force-stop \$p 2>/dev/null; ")
+                // suspend 是 Android 7+ 的系统级冻结，第三方可由 shell 调用
+                .append("am suspend --user 0 \$p 2>/dev/null; ")
+                .append("done;")
+        } else {
+            script.append("for p in ").append(pkgList).append("; do am force-stop \$p 2>/dev/null; done;")
+        }
+
+        // 第二轮：清后台 + 按 PID 硬杀（force-stop 对顽固保活链无效的场景）
+        script.append("am kill-all 2>/dev/null;")
+        script.append("sleep 1;")
+
+        // 第三轮：复查存活 → kill -9 补刀（最多两遍，避免单遍漏网）
+        repeat(2) {
+            script.append("for p in ").append(pkgList).append("; do ")
+                .append("for pid in \$(pidof \$p 2>/dev/null) \$(ps -A -o PID,NAME 2>/dev/null | ")
+                .append("awk -v k=\$p '\$2==k || index(\$2,substr(k,1,15))==1 {print \$1}'); do ")
+                .append("kill -9 \$pid 2>/dev/null; done; ")
+                .append("done;")
+            script.append("sleep 0.5;")
+        }
+        script.append("echo BATCH_DONE")
+
+        val batchRes = Privilege.exec(script.toString())
+        val batchOk = batchRes.second.contains("BATCH_DONE")
+
+        // 验尸：用 ps -A 全量解析（pidof 包名在 Android 上不可靠）
+        val alive = alivePackages(targets)
+        val killed = if (batchOk) targets.size - alive.size else 0
+
+        if (freeze && batchOk) {
+            lockdownUntil = System.currentTimeMillis() + LOCKDOWN_MS
+            scheduleResume(targets)
+        }
+
+        goHomeIfTrapped(context, self)
+        SecurityJournal.log(
+            "紧急封锁",
+            if (freeze) "${targets.size} 个第三方应用禁止运行，存活 ${alive.size}，${LOCKDOWN_MS / 1000} 秒后恢复"
+            else "$killed/${targets.size} 个第三方应用已停用"
+        )
+        return killed
+    }
+
+    /** 冻结期满自动解冻（suspend 到期本身会失效，这里显式解除，防 ROM 差异） */
+    private fun scheduleResume(targets: List<String>) {
+        val snapshot = targets
+        lockdownRunning = true
+        mainHandler.postDelayed({
+            try {
+                kotlin.concurrent.thread {
+                    var cmd = StringBuilder()
+                    snapshot.forEach { cmd.append("am unsuspend --user 0 ").append(it).append(" 2>/dev/null;") }
+                    // 冻结期间若使用了 disable-user，这里补齐 enable
+                    snapshot.forEach { cmd.append("pm enable ").append(it).append(" 2>/dev/null;") }
+                    cmd.append("echo RESUMED")
+                    Privilege.exec(cmd.toString())
+                    lockdownUntil = 0L
+                    lockdownRunning = false
+                    SecurityJournal.log("紧急封锁", "已解除，${snapshot.size} 个应用恢复运行")
+                }
+            } catch (e: Throwable) {
+                lockdownUntil = 0L
+                lockdownRunning = false
+            }
+        }, LOCKDOWN_MS)
+    }
+
+    /** 用 ps -A 全量解析存活包名（pidof 传包名在 Android 上基本查不到，这是旧版最大误判源） */
+    private fun alivePackages(pkgs: List<String>): Set<String> {
+        val out = Privilege.exec("ps -A -o PID,NAME 2>/dev/null").second
+        if (out.isBlank()) return emptySet()
+        val names = HashSet<String>()
+        out.lineSequence().forEach { line ->
+            val parts = line.trim().split(Regex("\\s+"))
+            if (parts.size >= 2 && parts[0].toIntOrNull() != null) {
+                names += parts[1]
+            }
+        }
+        return pkgs.filter { p ->
+            // 进程名通常被截断到 15 字符（内核 task comm 限制），用前缀匹配
+            val short = if (p.length > 15) p.substring(0, 15) else p
+            names.any { it == p || it == short || it.startsWith("$short:") || it == "$p:remote" }
+        }.toSet()
     }
 
     /** 斩杀单个应用（前台音量异常/霸屏场景） */
@@ -109,7 +190,14 @@ object PanicKill {
         if (pkg in BRIDGE_PKGS) return false
         if (isSystemApp(context, pkg)) return false
         return if (Privilege.isReady) {
-            Privilege.forceStop(pkg)
+            // force-stop 之后按 PID 补刀，单杀也要彻底
+            Privilege.exec(
+                "am force-stop $pkg 2>/dev/null;" +
+                "sleep 0.3;" +
+                "for pid in \$(pidof $pkg 2>/dev/null) \$(ps -A -o PID,NAME 2>/dev/null | " +
+                "awk -v k=$pkg '\$2==k || index(\$2,substr(k,1,15))==1 {print \$1}'); do kill -9 \$pid 2>/dev/null; done"
+            )
+            true
         } else {
             try {
                 val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager

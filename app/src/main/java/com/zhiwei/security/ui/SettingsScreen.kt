@@ -21,13 +21,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import android.widget.Toast
 import com.zhiwei.security.core.AdbPairing
 import com.zhiwei.security.core.AdbShell
 import com.zhiwei.security.core.AuthDb
 import com.zhiwei.security.core.DhizukuManager
+import com.zhiwei.security.core.PanicKill
 import com.zhiwei.security.core.PermissionRevoker
 import com.zhiwei.security.core.Prefs
 import com.zhiwei.security.core.Privilege
+import com.zhiwei.security.core.SelfGuard
 import com.zhiwei.security.core.ShizukuManager
 import com.zhiwei.security.core.VirusDb
 import com.zhiwei.security.service.NetGuardService
@@ -36,6 +39,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
+import kotlin.concurrent.thread
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +62,13 @@ fun SettingsScreen(navController: NavController) {
     var cloudRecheck by remember { mutableStateOf(Prefs.cloudRecheckEnabled) }
     var avdbStatus by remember { mutableStateOf("") }
     var revokeStatus by remember { mutableStateOf("") }
+    var selfProtect by remember { mutableStateOf(Prefs.selfProtectEnabled) }
+    var autoReinstall by remember { mutableStateOf(Prefs.autoReinstallEnabled) }
+    var lockdownFreeze by remember { mutableStateOf(Prefs.lockdownFreezeEnabled) }
+    var selfProtectStatus by remember { mutableStateOf("") }
+    val handlerMain = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
+    // 进页面时刷新自防护状态
+    LaunchedEffect(Unit) { selfProtectStatus = SelfGuard.statusText(context) }
     var showAdbDialog by remember { mutableStateOf(false) }
     var adbRefresh by remember { mutableStateOf(0) } // 触发状态重组
 
@@ -199,6 +210,53 @@ fun SettingsScreen(navController: NavController) {
 
             SwitchItem("隐藏后台卡片", "在最近任务列表中隐藏，防止被手动划掉杀掉", hideRecents) {
                 hideRecents = it; Prefs.hideRecentsEnabled = it
+            }
+            SwitchItem(
+                "防卸载（系统级）",
+                "开启后系统设置里的「卸载」按钮会被禁用，第三方卸载器也无法移除。" +
+                    "需设备所有者权限（内置 Dhizuku 或系统签名包）；无权限时自动降级为提醒，不会误锁。",
+                selfProtect
+            ) { want ->
+                selfProtect = want
+                Prefs.selfProtectEnabled = want
+                thread {
+                    val ok = SelfGuard.setUninstallBlocked(context, want)
+                    if (want && !ok) {
+                        // 降级：写哨兵，至少保证被卸载后能感知并引导回装
+                        SelfGuard.writeSentinel(context)
+                    }
+                    handlerMain.post {
+                        Toast.makeText(
+                            context,
+                            when {
+                                want && ok -> "防卸载已生效（卸载入口已禁用）"
+                                want && !ok -> "无设备所有者权限，已降级为哨兵提醒（不影响使用）"
+                                else -> "防卸载已关闭"
+                            },
+                            Toast.LENGTH_LONG
+                        ).show()
+                        selfProtectStatus = SelfGuard.statusText(context)
+                    }
+                }
+            }
+            SwitchItem(
+                "被卸载后自动回装",
+                "检测到本应用曾被卸载后重新安装时，自动引导恢复防护并下载最新版本",
+                autoReinstall
+            ) { autoReinstall = it; Prefs.autoReinstallEnabled = it }
+            SwitchItem(
+                "急救时冻结应用",
+                "紧急封锁时除强杀外，额外用系统 suspend 冻结第三方应用，" +
+                    "确保 ${PanicKill.LOCKDOWN_MS / 1000} 秒内无法被拉活（推荐开启）",
+                lockdownFreeze
+            ) { lockdownFreeze = it; Prefs.lockdownFreezeEnabled = it }
+            if (selfProtectStatus.isNotEmpty()) {
+                Text(
+                    "当前状态：$selfProtectStatus",
+                    fontSize = 12.sp,
+                    color = Color(0xFF7EC8E3),
+                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                )
             }
             // ===== 提权中心入口 =====
             SectionTitle("提权通道")

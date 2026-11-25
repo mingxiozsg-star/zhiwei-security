@@ -154,6 +154,21 @@ object Prefs {
         get() = sp.getString("vt_daily_date", "") ?: ""
         set(v) = sp.edit().putString("vt_daily_date", v).apply()
 
+    /** 自防护：防卸载（DeviceAdmin setUninstallBlocked + 隐藏自身，需 Dhizuku 设备所有者或 Root） */
+    var selfProtectEnabled: Boolean
+        get() = sp.getBoolean("sw_self_protect", false)
+        set(v) = sp.edit().putBoolean("sw_self_protect", v).apply()
+
+    /** 自防护：被卸载后自动回装（守护侧检测 + 提示下载最新包） */
+    var autoReinstallEnabled: Boolean
+        get() = sp.getBoolean("sw_auto_reinstall", false)
+        set(v) = sp.edit().putBoolean("sw_auto_reinstall", v).apply()
+
+    /** 急救斩杀时是否额外冻结（pm suspend / disable-user），关则仅强杀 */
+    var lockdownFreezeEnabled: Boolean
+        get() = sp.getBoolean("sw_lockdown_freeze", true)
+        set(v) = sp.edit().putBoolean("sw_lockdown_freeze", v).apply()
+
     /** 权限白名单（这些应用不参与权限风险评分，也不会被自动收回权限） */
     var permWhitelist: Set<String>
         get() = sp.getStringSet("perm_whitelist", emptySet()) ?: emptySet()

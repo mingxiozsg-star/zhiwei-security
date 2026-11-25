@@ -93,15 +93,18 @@ private var wakeLock: PowerManager.WakeLock? = null
                             volChangeTimes = LongArray(0)
                             volChangeDirs = IntArray(0)
                             android.widget.Toast.makeText(this@ProtectService,
-                                "🚨 知微安全：紧急斩杀已触发", android.widget.Toast.LENGTH_LONG).show()
+                                "🚨 知微安全：紧急封锁已触发", android.widget.Toast.LENGTH_LONG).show()
                             thread {
-                                val killed = com.zhiwei.security.core.PanicKill.killAllThirdParty(this@ProtectService)
+                                val killed = com.zhiwei.security.core.PanicKill
+                                    .killAllThirdParty(this@ProtectService, freeze = Prefs.lockdownFreezeEnabled)
                                 handler.post {
-                                    val msg = if (killed >= 0) "已斩杀 $killed 个第三方应用（前台+后台全部杀光）"
-                                        else "已清理 ${-killed} 个第三方应用后台进程（前台应用需激活提权通道才能强杀）"
+                                    val msg = if (killed >= 0)
+                                        "${killed} 个第三方应用已禁止运行，${com.zhiwei.security.core.PanicKill.LOCKDOWN_MS / 1000} 秒后恢复"
+                                    else
+                                        "已清理 ${-killed} 个第三方应用后台进程（前台应用需激活提权通道才能强杀）"
                                     android.widget.Toast.makeText(this@ProtectService,
                                         msg, android.widget.Toast.LENGTH_LONG).show()
-                                    NotifHelper.alert(this@ProtectService, "🚨 紧急斩杀完成", msg)
+                                    NotifHelper.alert(this@ProtectService, "🚨 紧急封锁完成", msg)
                                 }
                             }
                         }

@@ -70,6 +70,23 @@ class MainActivity : ComponentActivity() {
         if (Prefs.protectOn) {
             startServices()
         }
+        // 自防护哨兵：曾被保护的状态在重装后依然内存，用于引导恢复
+        thread {
+            try {
+                if (Prefs.selfProtectEnabled || Prefs.autoReinstallEnabled) {
+                    com.zhiwei.security.core.SelfGuard.writeSentinel(this)
+                }
+                if (com.zhiwei.security.core.SelfGuard.checkReinstallTrace(this)) {
+                    runOnUiThread {
+                        android.widget.Toast.makeText(
+                            this,
+                            "检测到卸载后重装，建议重新开启自防护",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            } catch (e: Throwable) { }
+        }
     }
 
     private fun startServices() {

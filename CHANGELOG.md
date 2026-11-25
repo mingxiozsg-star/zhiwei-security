@@ -1,4 +1,37 @@
 # 更新日志
+## v1.7.0（2026-11-18）
+### 第十一轮（三大核心缺陷修复 + 自防护 + 图标重制）
+
+**修 1：VPN（网络拦截）开了关不掉**
+- 根因：`onStartCommand` 返回 `START_STICKY`，`stopService` 之后系统无条件重建服务；读包线程阻塞在 `read()` 上，`onDestroy` 里 close fd 无法唤醒它，旧实例残留继续持有 VPN
+- 改为 `START_NOT_STICKY`，是否重启交由守护服务按用户开关判断
+- 读线程持有独立 `FileInputStream` 引用，`shutdown()` 先 close 流让阻塞 read 立即抛错退出，再 `interrupt()` 兜底
+- 新增静态 `stopRequested` 标记跨实例生效，杜绝 restart 竞态下旧实例复活
+- 服务启动即自检 `Prefs.netGuardEnabled`，配置为关闭则自杀清理，杜绝"幽灵 VPN"
+- `onRevoke()` 完整清理（用户在系统设置撤销或被他方 VPN 抢占）
+- 通知栏内置「关闭拦截」按钮，不用回应用也能停
+- 统一 `shutdown()` 收敛：关流 → 关 fd → 断线程 → `stopForeground(true)` → `NotificationManager.cancel` → `stopSelf`
+
+**修 2：狂按音量键斩杀后后台应用仍然存活**
+- 根因一：用 `pidof <包名>` 验尸。Android 的 pidof 只匹配进程名（且被内核截断至 15 字符），传包名几乎永远返回空 → 永远判定"已死"，实际全活着
+- 根因二：只 `am force-stop`，国产 ROM 保活链立刻互拉
+- 验尸改用 `ps -A -o PID,NAME` 全量解析 + 包名前缀/`:remote` 后缀匹配
+- 压制改为三轮：`am force-stop` 全量 → `am suspend --user 0`（系统级冻结）→ `am kill-all` → 按 PID `kill -9` 补刀两遍
+- 新增**紧急封锁窗口**：冻结后维持 10 秒禁止运行（`PanicKill.LOCKDOWN_MS`），期满自动 `am unsuspend` + `pm enable` 恢复
+- 冻结开关独立可控（设置页「急救时冻结应用」），关闭则仅强杀
+- 单杀 `killOne` 同样加 PID 补刀
+
+**新增 3：自我防护（防卸载 + 被删回装）**
+- 新增 `core/SelfGuard.kt`，三层防线逐级降级
+- ① `DevicePolicyManager.setUninstallBlocked`（设备所有者硬拦截，卸载按钮置灰）
+- ② 内置 Dhizuku 通道：取 `device_policy` 原始 binder → `Dhizuku.binderWrapper` 换设备所有者身份 → 反射调用，与 `setAppFrozen` 同一套做法
+- ③ 哨兵模式：无提权时写哨兵标记，重装后 `checkReinstallTrace` 感知并引导恢复防护
+- 设置页「自我防护」新增三项：「防卸载（系统级）」「被卸载后自动回装」「急救时冻结应用」，并实时显示当前自防护状态
+- 明确不通用的路：Android 不允许应用在被卸载后自行拉起（进程随包消失），故回装采用"哨兵留痕 + 重装引导"，不做虚假承诺
+
+**图标重制**：紧凑蓝色盾牌（占画布约 56%，自适应图标安全区内），三段蓝渐变 + 顶部玻璃高光 + 细笔圆头对勾 + 底部短基线，替换旧版过大占比与厚重描边
+
+**其它**：版本号 17/1.6.2 → 18/1.7.0；`NetGuardService.stop()` 先落盘开关再停止，避免关掉后又被自检拉回
 
 ## v1.6.2（2026-10-29）
 

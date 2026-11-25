@@ -113,17 +113,20 @@ class ZhiweiAccessibilityService : AccessibilityService() {
     }
 
     private fun triggerPanicKill() {
-        Toast.makeText(this, "🚨 知微安全：紧急斩杀已触发", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "🚨 知微安全：紧急封锁已触发", Toast.LENGTH_LONG).show()
         // 触觉反馈：长按震感确认斩杀已触发
         try {
             val vib = getSystemService(VIBRATOR_SERVICE) as android.os.Vibrator
             vib.vibrate(android.os.VibrationEffect.createOneShot(400, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
         } catch (e: Throwable) { }
         thread {
-            val killed = PanicKill.killAllThirdParty(this)
-            val msg = if (killed >= 0) "已斩杀 $killed 个第三方应用（前台+后台全部杀光）"
-                else "已清理 ${-killed} 个第三方应用后台进程（前台应用需激活提权通道才能强杀）"
-            com.zhiwei.security.core.NotifHelper.alert(this, "🚨 紧急斩杀完成", msg)
+            // freeze=true：除自己外的非系统应用全部禁止运行，10 秒后自动恢复
+            val killed = PanicKill.killAllThirdParty(this, freeze = Prefs.lockdownFreezeEnabled)
+            val msg = if (killed >= 0)
+                "${killed} 个第三方应用已禁止运行，${PanicKill.LOCKDOWN_MS / 1000} 秒后恢复"
+            else
+                "已清理 ${-killed} 个第三方应用后台进程（前台应用需激活提权通道才能强杀）"
+            com.zhiwei.security.core.NotifHelper.alert(this, "🚨 紧急封锁完成", msg)
             handler.post {
                 Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
             }
