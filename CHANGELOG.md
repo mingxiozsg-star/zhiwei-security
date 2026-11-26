@@ -1,5 +1,33 @@
 # 更新日志
-
+## v1.10.0（2026-11-26）
+### 第十五轮（内置特权纠偏：权限真正握在知微自己手里）
+**问题：v1.9.0 把「内置特权」做成了「等别人来申请」**
+v1.9.0 花了一整轮做对外授权服务端（Provider / AIDL / 授权弹窗 / 审计），但底层执行仍然依赖外部 Shizuku / Dhizuku / ADB。这意味着：**别人根本不来找我们申请，而外部授权一关，知微自己的特权也没了**。这不是内置，这是寄生。
+**修正 1：真正的内置内核 —— `app_process` 自起常驻守护进程**
+- 新增 `daemon/ZhiweiDaemon.kt`：独立进程入口，用 `CLASSPATH=<自身APK> app_process /system/bin --nice-name=zhiwei_daemon` 拉起，**以 shell（uid 2000）或 root（uid 0）身份常驻**
+- 新增 `core/BuiltinEngine.kt`：负责拉起、探活、通信、停止。拉起只需一次已有通道（Root / uid.system / 本机 ADB / Shizuku），**拉起之后权限就在知微手里，外部通道关闭甚至卸载都不影响 daemon 继续执行**
+- 通信走 `127.0.0.1` 本地 TCP，私有 token 鉴权 + token 派生签名校验，同机其他应用即使抢占端口伪造回包也过不了签名
+- 端口在 38271–38278 区间自动回退，避免被恶意占用后直接 DoS
+- APK 加载两轮尝试：先读安装目录，失败则复制副本到 `/data/local/tmp` 再用副本拉起（绕开部分机型 shell 读不到 `/data/app` 的限制）
+- 拉起时用 `setsid` 脱离父会话，`su` / `adb shell` 退出不会连带杀掉 daemon
+**修正 2：执行链重排 —— daemon 第一优先，且失败不偷偷降级**
+- `Privilege.exec()` 优先级改为：**内置 daemon → Root → uid.system → 本机 ADB → Shizuku**
+- daemon 在线时结果即为准：命令失败就是真失败，不再拿外部通道「补救」掩盖问题
+- `Privilege.Level` 新增 `BUILTIN` 等级，daemon 常驻时状态显示「内置守护进程（常驻）」，不再误报为 Shizuku/ADB
+**修正 3：控制台状态机与真实行为对齐**
+- `BuiltinPrivilege.activate()` 变成真的「拉起进程」；拉起失败立即回滚开关与持久化状态，**绝不留下「开着但其实没权限」的假象**
+- 新增 `NO_DAEMON` 状态：通道就绪但 daemon 掉线时，主卡直接给「重新拉起守护进程」按钮，不用重新配对
+- 守护进程日志改由 daemon 自己读取并回传（宿主 uid 受 SELinux 限制读不了 `/data/local/tmp`，以前 UI 那行日志永远显示不可读）
+- 控制台所有探活/日志读取移到 IO 线程 + 3 秒轮询，不再在 Composable 里阻塞 UI
+**修正 4：冷启动自动恢复**
+- 开启「开机自动恢复」且 daemon 已掉线时，应用启动后会在后台线程重新拉起一次；失败则保留用户意图并标记「已开启·等待通道」
+**诚实的边界（不夸大）**
+- 拉起 daemon **必须有一次提权通道**，这是 Android 的硬限制，任何非系统应用都一样，Stellar 也一样
+- 设备重启或 daemon 被杀后需要重新拉起（有通道时自动重试）
+- 对第三方开放的是 daemon 实际持有的身份（shell 或 root），不做无根据的宣传
+**其他**
+- 版本号：versionCode 21 → **22**，versionName 1.9.0 → **1.10.0**
+- 包名 `com.zhiwei.security` 与签名证书保持不变，可直接覆盖安装
 ## v1.9.0（2026-11-25）
 ### 第十四轮（内置特权：知微成为对外授权宿主）
 

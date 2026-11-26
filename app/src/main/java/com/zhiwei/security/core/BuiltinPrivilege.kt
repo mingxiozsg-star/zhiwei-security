@@ -4,36 +4,43 @@ import android.content.Context
 import android.util.Log
 
 /**
- * 内置特权服务（BuiltinPrivilege）
+ * 内置特权服务（BuiltinPrivilege）—— 知微作为**特权宿主**的核心
  *
- * 定位：知微的「Stellar / Sui 等价层」——把提权通道做成一个可被其他应用发现、
- * 申请、授权的常驻服务，而不是只给本应用自己用。
+ * 架构与参考样本 Stellar 对齐，分三层：
  *
- * 三层结构（对应参考样本的 Stellar 内核 + Shizuku API + 授权面板）：
- *  1. **内核**：Root / 本机 ADB / uid.system 三条真实提权通道（见 [Privilege]）
- *  2. **服务端**：[com.zhiwei.security.service.ZhiweiApiService] + [com.zhiwei.security.provider.ZhiweiProvider]，
- *     通过 ContentProvider 暴露 Binder，第三方应用可 `requestPermissionWithReason` 申请授权
- *  3. **授权**：[AuthDb] + `AuthGrantActivity`，按调用方 uid 精确判定，可随时撤销，全程审计
+ *  1. **内核（真身）**：[BuiltinEngine] + [com.zhiwei.security.daemon.ZhiweiDaemon]
+ *     用 `app_process` 把知微自己的代码拉成常驻进程，以 shell/root 身份长期存活。
+ *     → 权限在知微自己手里，外部应用关授权、卸载都不影响它。
  *
- * 固有限制（诚实声明）：
- *  - ADB 通道的 shell 权限来自本机 adbd（uid 2000），需要用户开「无线调试 / USB 调试」，
- *    这是 Android 的安全设计，任何应用都无法绕过。
- *  - Root 通道在无 Root 设备上不存在，属正常。
- *  - 本服务对第三方开放的是**shell 级**能力，不是 root 级；第三方拿到的是调用方 uid 校验后的通道。
+ *  2. **服务端（对外分发）**：[com.zhiwei.security.service.ZhiweiApiService]
+ *     + [com.zhiwei.security.provider.ZhiweiProvider]，
+ *     第三方通过 `content://com.zhiwei.security.provider` 的 `getBinder` 拿到 Binder，
+ *     再 `requestPermissionWithReason` 申请授权。
+ *
+ *  3. **授权（治理）**：[AuthDb] + `AuthGrantActivity`，按调用方 uid 精确判定，
+ *     可随时撤销，全程审计。
+ *
+ * 诚实的边界：
+ *  - **拉起 daemon 需要一次性提权**（无线调试配对 / Root）。这是 Android 的硬限制，
+ *    任何非系统应用都无法凭空创建高权限进程；Stellar 同样如此。
+ *  - daemon 拉起后就不再依赖外部通道；但**设备重启 / daemon 被杀**后需要再拉一次。
+ *  - 对第三方开放的是 daemon 实际持有的身份（shell 或 root），不做夸大宣传。
  */
 object BuiltinPrivilege {
+
     private const val TAG = "BuiltinPrivilege"
 
     /** 服务端状态 */
     enum class State(val label: String) {
-        STOPPED("服务未运行"),
+        STOPPED("未激活"),
         STARTING("启动中"),
-        RUNNING("服务运行中"),
-        NO_PRIVILEGE("无提权通道")
+        RUNNING("运行中"),
+        NO_PRIVILEGE("待通道"),
+        NO_DAEMON("已开启·守护进程未运行")
     }
 
     /** 服务端内核版本（协议版本，第三方可据此兼容） */
-    const val CORE_VERSION = "1.9.0"
+    const val CORE_VERSION = "1.10.0"
 
     /** 协议版本（与 ZhiweiApiService.VERSION 保持一致） */
     const val PROTOCOL_VERSION = 2
@@ -44,36 +51,62 @@ object BuiltinPrivilege {
     @Volatile
     private var started = false
 
-    /** 守护线程是否在跑（常驻监听提权通道变化） */
+    /** 常驻监控线程是否在跑 */
     @Volatile
-    private var daemonRunning = false
+    private var monitorRunning = false
 
     /** 最近一次启动结果（给 UI 展示） */
     @Volatile
     var lastMessage: String = ""
         private set
 
-    /** 服务是否已启动（对外开关打开 + Binder 可下发） */
+    /** 对外开关是否打开 */
     val isServiceRunning: Boolean get() = started
 
     /** 本次服务启动时间（UI 算运行时长） */
     val startedAt: Long get() = Prefs.builtinStartedAt
 
-    /** 当前运行方式（用于 UI「运行方式」字段） */
+    /** daemon 是否在线（真连接探活，带 1.5 秒缓存） */
+    fun isDaemonAlive(context: Context): Boolean = BuiltinEngine.isAlive(context)
+
+    /**
+     * 当前实际运行方式。
+     *
+     * 关键区别：以前这里读的是外部通道等级（ADB/Shizuku），
+     * 现在优先读 **daemon 自己的 uid** —— 那才是知微实际握着的权限。
+     */
+    fun runModeOf(context: Context): String {
+        if (!started) return "—"
+        return BuiltinEngine.daemonIdentity(context)
+    }
+
+    /** 兼容旧调用（无 context 时退回读通道等级） */
     val runMode: String
-        get() = when (Privilege.levelState.value) {
-            Privilege.Level.ROOT -> "Root"
-            Privilege.Level.SYSTEM -> "System"
-            Privilege.Level.ADB -> "ADB"
-            Privilege.Level.SHIZUKU -> "Shizuku"
-            else -> if (started) "待通道" else "—"
+        get() {
+            val ctx = BuiltinEngineHolder.context
+            if (ctx != null && started) {
+                val id = BuiltinEngine.daemonIdentity(ctx)
+                if (id != "未运行") return id
+            }
+            return when (Privilege.levelState.value) {
+                Privilege.Level.BUILTIN -> "内置守护进程（常驻）"
+                Privilege.Level.ROOT -> "Root（通道）"
+                Privilege.Level.SYSTEM -> "System（通道）"
+                Privilege.Level.ADB -> "ADB（通道就绪）"
+                Privilege.Level.SHIZUKU -> "Shizuku（外部）"
+                else -> if (started) "待通道" else "—"
+            }
         }
 
     /** 聚合状态（UI 主卡用） */
-    fun state(): State = when {
-        !isServiceRunning -> State.STOPPED
-        !Privilege.isReady -> State.NO_PRIVILEGE
-        else -> State.RUNNING
+    fun state(): State {
+        if (!started) return State.STOPPED
+        val ctx = BuiltinEngineHolder.context ?: return State.NO_PRIVILEGE
+        return when {
+            BuiltinEngine.isAlive(ctx) -> State.RUNNING
+            !Privilege.isReady -> State.NO_PRIVILEGE
+            else -> State.NO_DAEMON
+        }
     }
 
     /** 已授权第三方应用数量 */
@@ -92,121 +125,158 @@ object BuiltinPrivilege {
     }
 
     /**
-     * 启动内置特权服务。
+     * 激活内置特权 = 真正把 daemon 拉起来。
      *
-     * Provider 只要进程活着就能被 call 到，这里额外做三件 Provider 做不到的事：
-     * 1. 预热授权库与提权检测（避免第三方第一次调用等到超时）
-     * 2. 起守护线程，提权通道掉线时自动重连（ADB 断连是常态）
-     * 3. 把「服务已启用」写进 Prefs，供开机自启逻辑判断
+     * 注意：这不是「打开一个开关」，而是要真起一个高权限进程。
+     * 没有可用提权通道时会明确失败并提示用户先配对，绝不假装成功。
      *
-     * @return true 表示服务已就绪（对外开关已打开）
+     * @return Pair(是否成功, 说明)
      */
-    fun start(context: Context): Boolean {
-        if (started) {
-            lastMessage = "服务已在运行"
-            return true
-        }
-        return try {
-            Prefs.init(context)
-            AuthDb.init(context)
-            com.zhiwei.security.service.ZhiweiApiServiceHolder.context = context.applicationContext
-            started = true
-            Prefs.builtinPrivilegeEnabled = true
-            Prefs.builtinStartedAt = System.currentTimeMillis()
-            // 预热提权检测（不阻塞调用方）
-            Privilege.warmup()
-            try { AdbShell.refreshStatus() } catch (e: Throwable) { }
-            startDaemon()
-            lastMessage = "服务已启动"
-            SecurityJournal.log("内置特权", "特权服务已启动，运行方式：$runMode")
-            Log.i(TAG, "builtin privilege service started")
-            true
-        } catch (e: Throwable) {
+    fun activate(context: Context): Pair<Boolean, String> {
+        Prefs.init(context)
+        AuthDb.init(context)
+        BuiltinEngineHolder.context = context.applicationContext
+        com.zhiwei.security.service.ZhiweiApiServiceHolder.context = context.applicationContext
+        lastMessage = "正在拉起守护进程…"
+
+        val (ok, msg) = BuiltinEngine.ensureStarted(context)
+        if (!ok) {
+            // 拉起失败绝不能留下「已开启」的假状态
             started = false
-            lastMessage = "启动失败：${e.message}"
-            Log.w(TAG, "start failed", e)
-            false
+            monitorRunning = false
+            Prefs.builtinPrivilegeEnabled = false
+            lastMessage = msg
+            SecurityJournal.log("内置特权", "激活失败：$msg")
+            return false to msg
         }
+        started = true
+        Prefs.daemonEverStarted = true
+        Prefs.builtinPrivilegeEnabled = true
+        if (Prefs.builtinStartedAt <= 0L) Prefs.builtinStartedAt = System.currentTimeMillis()
+        startMonitor(context)
+        lastMessage = msg
+        SecurityJournal.log("内置特权", "已激活：$msg")
+        Log.i(TAG, "builtin privilege activated: $msg")
+        return true to msg
     }
 
-    /** 进程冷启动后同步持久化状态（开机自启 / 被系统复活时调用） */
+    /** 兼容旧入口 */
+    fun start(context: Context): Boolean = activate(context).first
+
+    /**
+     * 冷启动恢复。
+     *
+     * 分两种情况：
+     *  - daemon 还活着（进程未被杀）→ 直接恢复状态，外部通道有没有都无所谓。
+     *  - daemon 已不在（设备重启 / 被杀）→ 若开了「开机自动恢复」且当前有可用
+     *    提权通道，就在后台重新拉起一次；失败则标记为待激活，等用户手动处理。
+     */
     fun restoreIfEnabled(context: Context) {
         Prefs.init(context)
         AuthDb.init(context)
+        BuiltinEngineHolder.context = context.applicationContext
         if (!Prefs.builtinPrivilegeEnabled) return
         if (started) return
-        com.zhiwei.security.service.ZhiweiApiServiceHolder.context = context.applicationContext
         started = true
-        startDaemon()
-        lastMessage = "服务已恢复"
-        Log.i(TAG, "builtin privilege service restored")
+
+        if (BuiltinEngine.isAlive(context)) {
+            lastMessage = "服务已恢复（守护进程在线）"
+            startMonitor(context)
+            return
+        }
+        if (!Prefs.builtinAutoStart) {
+            lastMessage = "服务已恢复，但守护进程掉线（未开启自动恢复）"
+            startMonitor(context)
+            return
+        }
+        // 后台线程拉起，避免阻塞应用启动
+        kotlin.concurrent.thread(isDaemon = true, name = "builtin-restore") {
+            val (ok, msg) = runCatching { activate(context) }
+                .getOrElse { false to "自动拉起异常：${it.message}" }
+            if (!ok) {
+                // 失败也要保留用户意图：标记为「已开启·等待通道」，
+                // 下次进入应用时再按 autoStart 重试。
+                Prefs.builtinPrivilegeEnabled = true
+                started = true
+                startMonitor(context)
+            }
+            lastMessage = if (ok) "服务已自动恢复：$msg" else "自动拉起失败：$msg"
+            Log.i(TAG, "auto restore -> $ok: $msg")
+        }
     }
 
-    /** 停止服务（撤销对外暴露，不影响已有授权记录） */
-    fun stop(): Boolean {
+    /** 停止：关闭对外开关 + 杀掉 daemon */
+    fun stop(context: Context): Boolean {
         started = false
-        daemonRunning = false
+        monitorRunning = false
+        try { BuiltinEngine.stop(context) } catch (e: Throwable) { }
         Prefs.builtinPrivilegeEnabled = false
-        lastMessage = "服务已停止"
-        SecurityJournal.log("内置特权", "特权服务已停止")
+        Prefs.builtinStartedAt = 0L
+        lastMessage = "已停止，守护进程已结束"
+        SecurityJournal.log("内置特权", "内置特权已关闭，守护进程已结束")
         return true
     }
 
+    /** 兼容旧签名（无 context） */
+    fun stop(): Boolean {
+        val ctx = BuiltinEngineHolder.context
+        return if (ctx != null) stop(ctx) else {
+            started = false; monitorRunning = false
+            Prefs.builtinPrivilegeEnabled = false
+            lastMessage = "已停止"
+            true
+        }
+    }
+
     /**
-     * 常驻守护：每 45 秒检查一次提权通道，掉线则尝试自动恢复。
+     * 常驻监控：每 30 秒探活一次 daemon。
      *
-     * 为什么需要：ADB 无线调试在息屏 / 网络切换后经常静默掉线，
-     * 用户不会主动重连，服务就变成空壳。这里做无感自愈。
+     * daemon 掉线时**不静默重连**（没有通道也重连不了），只更新状态，
+     * 让 UI 明确显示「已开启·守护进程未运行」，避免误以为还有权限。
      */
-    private fun startDaemon() {
-        if (daemonRunning) return
-        daemonRunning = true
-        kotlin.concurrent.thread(isDaemon = true, name = "builtin-privilege-daemon") {
-            while (daemonRunning && started) {
+    private fun startMonitor(context: Context) {
+        if (monitorRunning) return
+        monitorRunning = true
+        kotlin.concurrent.thread(isDaemon = true, name = "builtin-privilege-monitor") {
+            val ctx = context.applicationContext
+            while (monitorRunning && started) {
                 try {
-                    Thread.sleep(45_000)
+                    Thread.sleep(30_000)
                     if (!started) break
-                    // 只在「以为连着但其实断了」时才重连，避免干扰用户手动操作
-                    if (!Privilege.isReady) {
-                        if (Prefs.adbHost.isNotEmpty() && Prefs.adbPort > 0) {
-                            AdbShell.autoReconnect()
-                            Privilege.refresh()
-                        }
-                    }
+                    val alive = BuiltinEngine.probe(ctx)
+                    if (!alive) lastMessage = "守护进程已掉线，请重新激活"
                 } catch (e: InterruptedException) {
                     break
                 } catch (e: Throwable) {
-                    Log.w(TAG, "daemon tick failed", e)
+                    Log.w(TAG, "monitor tick failed", e)
                 }
             }
         }
     }
 
-    /** 第三方应用调用前的能力自检说明（写进 SDK 文档与 UI） */
-    fun capabilityReport(): String = buildString {
+    /** 第三方应用调用前的能力自检说明 */
+    fun capabilityReport(context: Context? = null): String = buildString {
+        val ctx = context ?: BuiltinEngineHolder.context
         appendLine("内核版本：$CORE_VERSION（协议 v$PROTOCOL_VERSION）")
-        appendLine("运行方式：$runMode")
-        appendLine("提权等级：${Privilege.levelState.value.label}")
+        appendLine("守护进程：" + if (ctx != null && BuiltinEngine.isAlive(ctx))
+            "运行中 · ${BuiltinEngine.daemonIdentity(ctx)}" else "未运行")
         appendLine("服务状态：${state().label}")
         appendLine("运行时长：${uptimeText()}")
-        appendLine("ADB 通道：${if (AdbShell.isConnected) "已连接 ${AdbShell.connectedDevice ?: ""}" else "未连接"}")
-        appendLine("Shizuku：${ShizukuManager.statusText}")
+        appendLine("拉起通道：${Privilege.levelState.value.label}")
         append("已授权第三方应用：${grantedCount()} 个")
     }
 
-    /** 对外接入说明（UI 里直接展示给用户看，也能复制给开发者） */
+    /** 对外接入说明 */
     fun sdkSnippet(): String = """
 // 1) 探测知微是否可用
 val st = contentResolver.call(
     Uri.parse("content://$AUTHORITY"), "getStatus", null, null)
 if (st?.getBoolean("enabled") != true) return  // 未开启内置特权
-
 // 2) 拿 Binder
 val b = contentResolver.call(
     Uri.parse("content://$AUTHORITY"), "getBinder", null, null)
 val svc = IZhiweiService.Stub.asInterface(
     (b?.getParcelable<BinderContainer>("binder"))?.binder)
-
 // 3) 申请授权（reason 会显示在知微弹窗上）
 svc.requestPermissionWithReason("需要 sh 执行能力", object : IZhiweiCallback.Stub() {
     override fun onResult(granted: Boolean) {
@@ -214,18 +284,12 @@ svc.requestPermissionWithReason("需要 sh 执行能力", object : IZhiweiCallba
         // 4) 执行。返回 "exitCode\noutput"
         val r = svc.execCommand("pm list packages -3").lines()
         val exitCode = r.firstOrNull()?.toIntOrNull() ?: -1
-                val output = r.drop(1).joinToString("\n")
+        val output = r.drop(1).joinToString("\n")
     }
 })
 """.trimIndent()
 
-    /**
-     * 有线 ADB 模式：连接 USB 调试端口。
-     *
-     * 与无线调试的区别只在端口来源：USB 调试默认监听本机 5555（部分机型需手动
-     * `adb tcpip 5555`，但那一步本身就需要电脑，因此在纯手机场景下，
-     * 这里主要尝试「本机 127.0.0.1:5555」与「上一次记住的地址」）。
-     */
+    /** 有线 ADB 模式：连接 USB 调试端口 */
     fun connectUsbDebugging(): Pair<Boolean, String> {
         AdbShell.connect("127.0.0.1", 5555).let { (ok, _) ->
             if (ok) return true to "✅ USB 调试端口 127.0.0.1:5555 已连接"

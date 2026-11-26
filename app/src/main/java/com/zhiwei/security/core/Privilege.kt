@@ -19,7 +19,9 @@ object Privilege {
         SHIZUKU("Shizuku (shell)"),
         ADB("本机 ADB (shell)"),
         SYSTEM("系统 uid (1000)"),
-        ROOT("Root (uid 0)")
+        ROOT("Root (uid 0)"),
+        /** 内置守护进程已常驻：权限在知微自己手里，不再依赖任何外部应用 */
+        BUILTIN("内置守护进程（常驻）")
     }
 
     /** 当前进程是否已是 android.uid.system（system 渠道包 + testkey 系统） */
@@ -59,7 +61,13 @@ object Privilege {
     private fun detectAndPublish() {
         if (!rootAvailable) rootAvailable = checkRoot()
         try { AdbShell.refreshStatus() } catch (e: Throwable) { }
+        // 内置 daemon 在线 = 优先级最高，此时外部通道存不存在都无所谓
+        val builtinAlive = try {
+            val ctx = BuiltinEngineHolder.context
+            ctx != null && BuiltinEngine.isAlive(ctx)
+        } catch (e: Throwable) { false }
         val lv = when {
+            builtinAlive -> Level.BUILTIN
             rootAvailable -> Level.ROOT
             isSystemUid -> Level.SYSTEM
             AdbShell.isConnected -> Level.ADB
@@ -102,6 +110,7 @@ object Privilege {
     val statusText: String
         get() = when (levelState.value) {
             Level.DETECTING -> "提权通道检测中…"
+            Level.BUILTIN -> "内置守护进程已常驻（权限由知微自己持有）"
             Level.ROOT -> "Root 已就绪（uid 0，最高权限）"
             Level.SYSTEM -> "系统级提权已生效（android.uid.system）"
             Level.ADB -> "本机 ADB 已连接（shell 权限）"
@@ -113,9 +122,32 @@ object Privilege {
     val isReady: Boolean
         get() = levelState.value.let { it != Level.NONE && it != Level.DETECTING }
 
-    /** 执行特权命令，自动选择 root 或 Shizuku，返回 (exitCode, 输出) */
+    /**
+     * 执行特权命令。
+     *
+     * 通道优先级（关键改动）：
+     *   1. **内置 daemon** —— 知微自己的常驻进程，权限在知微手里，不受任何第三方
+     *      应用开关影响。只要它在，就绝不降级到外部通道。
+     *   2. Root（su）
+     *   3. uid.system
+     *   4. 本机 ADB
+     *   5. Shizuku（外部应用，随时可能被关掉，仅作兜底）
+     */
     fun exec(command: String): Pair<Int, String> {
-        // root 优先
+        // 1. 内置 daemon 优先（这是「权限在自己手里」的核心）
+        val ctx = BuiltinEngineHolder.context
+        if (ctx != null) {
+            try {
+                if (BuiltinEngine.isAlive(ctx)) {
+                    // daemon 在线时结果即为准：命令失败就是真失败，
+                    // 不再拿外部通道去「补救」，避免掩盖问题。
+                    return BuiltinEngine.exec(ctx, command)
+                }
+            } catch (e: Throwable) {
+                Log.w(TAG, "builtin daemon exec failed: $command", e)
+            }
+        }
+        // 2. root 优先
         if (hasRoot) {
             try {
                 val p = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
@@ -127,7 +159,7 @@ object Privilege {
                 Log.w(TAG, "root exec failed: $command", e)
             }
         }
-        // 系统 uid：经 sh -c 执行（Runtime.exec(String) 不走 shell，分号/重定向/引号全失效）
+        // 3. 系统 uid：经 sh -c 执行（Runtime.exec(String) 不走 shell，分号/重定向/引号全失效）
         if (isSystemUid) {
             try {
                 val p = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
@@ -140,12 +172,12 @@ object Privilege {
                 Log.w(TAG, "system exec failed: $command", e)
             }
         }
-        // 本机 ADB 通道（优先于 Shizuku）
+        // 4. 本机 ADB 通道
         if (AdbShell.isConnected) {
             val r = AdbShell.shell(command)
             if (r.first != -1) return r
         }
-        // Shizuku 兜底
+        // 5. Shizuku 兜底
         if (ShizukuManager.isReady) {
             return ShizukuManager.exec(command)
         }

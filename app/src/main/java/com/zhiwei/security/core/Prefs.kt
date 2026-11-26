@@ -238,4 +238,20 @@ object Prefs {
     var builtinStartedAt: Long
         get() = sp.getLong("bp_started_at", 0L)
         set(v) = sp.edit().putLong("bp_started_at", v).apply()
+
+    // ===== 内置守护进程（app_process 自建高权限进程） =====
+    /**
+     * daemon 鉴权 token。
+     *
+     * 存本应用私有 SharedPreferences，只有同 uid 能读；配合 daemon 仅绑定
+     * 127.0.0.1，别的应用即使猜到端口也连不上。
+     */
+    var daemonToken: String
+        get() = sp.getString("daemon_token", "") ?: ""
+        set(v) = sp.edit().putString("daemon_token", v).apply()
+
+    /** 内置守护进程是否曾经成功拉起过（用于 UI 区分「从未激活」与「掉线」） */
+    var daemonEverStarted: Boolean
+        get() = sp.getBoolean("daemon_ever_started", false)
+        set(v) = sp.edit().putBoolean("daemon_ever_started", v).apply()
 }

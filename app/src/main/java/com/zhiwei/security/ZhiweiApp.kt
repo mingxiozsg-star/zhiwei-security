@@ -26,6 +26,7 @@ class ZhiweiApp : Application() {
         com.zhiwei.security.core.ShizukuManager.init()
         com.zhiwei.security.core.AdbShell.init(this)
         com.zhiwei.security.core.Privilege.warmup()
+        com.zhiwei.security.core.BuiltinEngineHolder.context = this
         com.zhiwei.security.core.ScanEngineHub.register(com.zhiwei.security.core.AvlSdkEngine())
         com.zhiwei.security.core.SecurityJournal.init(this)
         com.zhiwei.security.core.LocalAvScannerManager.init(this)

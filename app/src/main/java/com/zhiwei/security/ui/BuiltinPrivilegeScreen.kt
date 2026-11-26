@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.zhiwei.security.core.AdbShell
 import com.zhiwei.security.core.AuthDb
+import com.zhiwei.security.core.BuiltinEngine
 import com.zhiwei.security.core.BuiltinPrivilege
 import com.zhiwei.security.core.Prefs
 import com.zhiwei.security.core.Privilege
@@ -59,24 +60,57 @@ fun BuiltinPrivilegeScreen(navController: NavController) {
     var log by remember { mutableStateOf("") }
     var showSdk by remember { mutableStateOf(false) }
 
+    // 守护进程相关的状态一律在 IO 线程取出后放进 State，
+    // 绝不在 Composable 里直接做 socket 探活（否则每帧都阻塞 UI）。
+    var daemonLogLine by remember { mutableStateOf("—") }
+    var svcState by remember { mutableStateOf(BuiltinPrivilege.State.STOPPED) }
+    var runMode by remember { mutableStateOf("—") }
+    var uptime by remember { mutableStateOf("—") }
+
     // 提权等级的 Compose State 订阅（通道变化自动重绘）
     val level by Privilege.levelState
 
     LaunchedEffect(refresh) {
-        withContext(Dispatchers.IO) {
-            try { AdbShell.refreshStatus() } catch (e: Throwable) { }
-        }
         enabled = Prefs.builtinPrivilegeEnabled
         granted = AuthDb.grantedApps
         audit = AuthDb.auditLog()
         intercept = AuthDb.cmdInterceptEnabled
+        withContext(Dispatchers.IO) {
+            try { AdbShell.refreshStatus() } catch (e: Throwable) { }
+        }
+    }
+
+    // 状态/运行方式/日志：每 3 秒在 IO 线程刷新一次
+    LaunchedEffect(refresh, enabled) {
+        while (true) {
+            val snap = withContext(Dispatchers.IO) {
+                if (!enabled) {
+                    Triple("—", "—", "—") to BuiltinPrivilege.State.STOPPED
+                } else {
+                    Triple(
+                        BuiltinPrivilege.runModeOf(context),
+                        BuiltinPrivilege.uptimeText(),
+                        try {
+                            BuiltinEngine.tailLog(context, 1).trim()
+                                .substringAfter("] ", "")
+                                .ifEmpty { "（暂无）" }
+                        } catch (e: Throwable) { "（不可读）" }
+                    ) to BuiltinPrivilege.state()
+                }
+            }
+            runMode = snap.first.first
+            uptime = snap.first.second
+            daemonLogLine = snap.first.third
+            svcState = snap.second
+            kotlinx.coroutines.delay(3_000)
+        }
     }
 
     if (showAdb) {
         AdbActivationDialog(onDismiss = { showAdb = false; refresh++ })
     }
 
-    val state = if (enabled) BuiltinPrivilege.state() else BuiltinPrivilege.State.STOPPED
+    val state = svcState
 
     Scaffold(
         topBar = {
@@ -115,15 +149,17 @@ fun BuiltinPrivilegeScreen(navController: NavController) {
                                 fontWeight = FontWeight.Bold, color = Color.White)
                             Text(
                                 when (state) {
-                                    BuiltinPrivilege.State.RUNNING -> "● 运行中"
+                                    BuiltinPrivilege.State.RUNNING -> "● 守护进程运行中"
                                     BuiltinPrivilege.State.NO_PRIVILEGE -> "● 已开启·等待提权通道"
-                                    BuiltinPrivilege.State.STOPPED -> "○ 未运行"
+                                    BuiltinPrivilege.State.NO_DAEMON -> "● 已开启·守护进程未运行"
+                                    BuiltinPrivilege.State.STOPPED -> "○ 未激活"
                                     BuiltinPrivilege.State.STARTING -> "● 启动中"
                                 },
                                 fontSize = 13.sp,
                                 color = when (state) {
                                     BuiltinPrivilege.State.RUNNING -> Color(0xFF66D9A0)
-                                    BuiltinPrivilege.State.NO_PRIVILEGE -> Color(0xFFFFB74D)
+                                    BuiltinPrivilege.State.NO_PRIVILEGE,
+                                    BuiltinPrivilege.State.NO_DAEMON -> Color(0xFFFFB74D)
                                     else -> Color(0xFF9090A0)
                                 }
                             )
@@ -131,17 +167,31 @@ fun BuiltinPrivilegeScreen(navController: NavController) {
                         Switch(
                             checked = enabled,
                             onCheckedChange = { want ->
-                                enabled = want
                                 if (want) {
-                                    BuiltinPrivilege.start(context)
-                                    log = BuiltinPrivilege.lastMessage
-                                    SecurityJournal.log("内置特权", "对外特权服务已开启")
+                                    // 激活 = 真起一个高权限守护进程，必须在 IO 线程等待
+                                    busy = true
+                                    log = "正在拉起守护进程…（需要已连通的提权通道）"
+                                    scope.launch {
+                                        val r = withContext(Dispatchers.IO) {
+                                            BuiltinPrivilege.activate(context)
+                                        }
+                                        // 失败就把开关拨回去，绝不留下「开着但其实没权限」的假象
+                                        enabled = r.first
+                                        log = r.second
+                                        busy = false
+                                        SecurityJournal.log("内置特权",
+                                            if (r.first) "内置特权已激活" else "激活失败：${r.second}")
+                                        refresh++
+                                    }
                                 } else {
-                                    BuiltinPrivilege.stop()
-                                    log = "服务已关闭，第三方已无法发现本服务"
-                                    SecurityJournal.log("内置特权", "对外特权服务已关闭")
+                                    enabled = false
+                                    scope.launch {
+                                        withContext(Dispatchers.IO) { BuiltinPrivilege.stop(context) }
+                                        log = "已关闭：守护进程已结束，第三方拿不到 Binder"
+                                        SecurityJournal.log("内置特权", "内置特权已关闭")
+                                        refresh++
+                                    }
                                 }
-                                refresh++
                             },
                             colors = SwitchDefaults.colors(
                                 checkedTrackColor = Color(0xFFFF6B9D), checkedThumbColor = Color.White)
@@ -150,22 +200,46 @@ fun BuiltinPrivilegeScreen(navController: NavController) {
                     Spacer(Modifier.height(10.dp))
                     HorizontalDivider(color = Color(0xFF2A2A40))
                     Spacer(Modifier.height(10.dp))
-                    RowInfo("运行方式", BuiltinPrivilege.runMode)
-                    RowInfo("提权等级", level.label)
-                    RowInfo("运行时长", if (enabled) BuiltinPrivilege.uptimeText() else "—")
+                    RowInfo("运行方式", runMode)
+                    RowInfo("拉起通道", level.label)
+                    RowInfo("运行时长", uptime)
+                    RowInfo("守护进程日志", daemonLogLine.take(60))
                     RowInfo("内核版本", "${BuiltinPrivilege.CORE_VERSION}（协议 v${BuiltinPrivilege.PROTOCOL_VERSION}）")
                     RowInfo("已授权应用", "${granted.size} 个")
                     if (log.isNotEmpty()) {
                         Spacer(Modifier.height(6.dp))
                         Text(log, fontSize = 12.sp, color = Color(0xFF7EC8E3))
                     }
-                    if (enabled && !Privilege.isReady) {
+                    if (enabled && state == BuiltinPrivilege.State.NO_PRIVILEGE) {
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "⚠ 服务已开启，但当前没有可用提权通道。第三方能发现服务、能提交申请，" +
-                                "但无法执行命令。请先激活下方任一通道。",
+                            "⚠ 服务已开启，但守护进程未运行且当前没有可用提权通道。" +
+                                "第三方能发现服务、能提交申请，但无法执行命令。请先在下方激活任一通道，再重新打开开关。",
                             fontSize = 12.sp, color = Color(0xFFFFB74D), lineHeight = 17.sp
                         )
+                    }
+                    if (enabled && state == BuiltinPrivilege.State.NO_DAEMON) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "⚠ 提权通道就绪，但守护进程未在运行（可能被系统清理或设备已重启）。" +
+                                "点下方「重新拉起守护进程」即可，无需重新配对。",
+                            fontSize = 12.sp, color = Color(0xFFFFB74D), lineHeight = 17.sp
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        TextButton(onClick = {
+                            if (!busy) {
+                                busy = true
+                                log = "正在重新拉起守护进程…"
+                                scope.launch {
+                                    val r = withContext(Dispatchers.IO) {
+                                        BuiltinPrivilege.activate(context)
+                                    }
+                                    log = r.second
+                                    busy = false
+                                    refresh++
+                                }
+                            }
+                        }) { Text("重新拉起守护进程", color = Color(0xFFFF6B9D), fontSize = 13.sp) }
                     }
                 }
             }
@@ -230,12 +304,16 @@ fun BuiltinPrivilegeScreen(navController: NavController) {
                     ChannelRow(
                         title = "Root / 系统签名通道",
                         status = when (level) {
+                            Privilege.Level.BUILTIN -> "✅ 已内置常驻（不依赖外部应用）"
                             Privilege.Level.ROOT -> "✅ Root 已就绪（uid 0）"
                             Privilege.Level.SYSTEM -> "✅ 系统 uid 已生效"
                             Privilege.Level.SHIZUKU -> "✅ 经 Shizuku 通道就绪"
+                            Privilege.Level.ADB -> "✅ 经本机 ADB 通道就绪"
                             else -> "未检测到（安装 system 渠道包或 Root 后自动生效）"
                         },
-                        active = level == Privilege.Level.ROOT || level == Privilege.Level.SYSTEM || level == Privilege.Level.SHIZUKU,
+                        active = level == Privilege.Level.BUILTIN || level == Privilege.Level.ROOT ||
+                            level == Privilege.Level.SYSTEM || level == Privilege.Level.SHIZUKU ||
+                            level == Privilege.Level.ADB,
                         action = "提权中心",
                         onAction = { navController.navigate("privilege") }
                     )
